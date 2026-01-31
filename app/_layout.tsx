@@ -1,24 +1,46 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { CoolifyApiProvider } from "@/providers/coolify-api-provider";
+import { colors } from "@/theme/colors";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import "react-native-reanimated";
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: "(tabs)",
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+    <CoolifyApiProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background.secondary },
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="application/[uuid]/index"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="application/[uuid]/logs"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="deployment/[uuid]"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+      <StatusBar style="light" />
+    </CoolifyApiProvider>
   );
 }

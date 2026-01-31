@@ -1,12 +1,12 @@
-import { ApplicationCard } from "@/components/applications/application-card";
-import { EmptyApplications } from "@/components/applications/empty-applications";
+import { DeploymentCard } from "@/components/deployments/deployment-card";
+import { EmptyDeployments } from "@/components/deployments/empty-deployments";
 import { ErrorState } from "@/components/error-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
-import { useApplications } from "@/hooks/useApplications";
+import { useDeployments } from "@/hooks/useDeployments";
 import { colors, radius, spacing } from "@/theme";
-import type { ApplicationResponse } from "@/types/api";
+import type { DeploymentResponse } from "@/types/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
@@ -22,11 +22,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function ApplicationsScreen() {
+export default function DeploymentsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
-    applications,
+    deployments,
     isLoading,
     isRefreshing,
     error,
@@ -34,11 +34,8 @@ export default function ApplicationsScreen() {
     autoRefreshEnabled,
     refresh,
     toggleAutoRefresh,
-    startApplication,
-    stopApplication,
-    restartApplication,
-    deployApplication,
-  } = useApplications();
+    cancelDeployment,
+  } = useDeployments();
 
   const rotation = useSharedValue(0);
 
@@ -63,51 +60,33 @@ export default function ApplicationsScreen() {
     router.push("/settings");
   }, [router]);
 
-  const handleApplicationPress = useCallback(
+  const handleDeploymentPress = useCallback(
     (uuid: string) => {
-      router.push(`/application/${uuid}` as Href);
-    },
-    [router],
-  );
-
-  const handleViewLogs = useCallback(
-    (uuid: string) => {
-      router.push(`/application/${uuid}/logs` as Href);
+      router.push(`/deployment/${uuid}` as Href);
     },
     [router],
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: ApplicationResponse }) => (
-      <ApplicationCard
-        application={item}
-        onPress={handleApplicationPress}
-        onDeploy={deployApplication}
-        onRestart={restartApplication}
-        onStart={startApplication}
-        onStop={stopApplication}
-        onViewLogs={handleViewLogs}
+    ({ item }: { item: DeploymentResponse }) => (
+      <DeploymentCard
+        deployment={item}
+        onPress={handleDeploymentPress}
+        onCancel={cancelDeployment}
       />
     ),
-    [
-      handleApplicationPress,
-      deployApplication,
-      restartApplication,
-      startApplication,
-      stopApplication,
-      handleViewLogs,
-    ],
+    [handleDeploymentPress, cancelDeployment],
   );
 
   const keyExtractor = useCallback(
-    (item: ApplicationResponse) => item.uuid,
+    (item: DeploymentResponse) => item.deployment_uuid,
     [],
   );
 
   const renderEmpty = useCallback(() => {
     if (isLoading) return null;
     return (
-      <EmptyApplications
+      <EmptyDeployments
         isConfigured={isConfigured}
         onGoToSettings={handleGoToSettings}
         onRefresh={refresh}
@@ -118,12 +97,12 @@ export default function ApplicationsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LoadingSpinner message="Loading applications..." />
+        <LoadingSpinner message="Loading deployments..." />
       </View>
     );
   }
 
-  if (error && applications.length === 0) {
+  if (error && deployments.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ErrorState message={error} onRetry={refresh} />
@@ -134,7 +113,7 @@ export default function ApplicationsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <Text style={styles.title}>Applications</Text>
+        <Text style={styles.title}>Deployments</Text>
         <View style={styles.headerActions}>
           <Pressable
             style={[
@@ -173,12 +152,12 @@ export default function ApplicationsScreen() {
       </View>
 
       <FlashList
-        data={applications}
+        data={deployments}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={[
           styles.list,
-          applications.length === 0 && styles.emptyList,
+          deployments.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={renderEmpty}
         refreshControl={
