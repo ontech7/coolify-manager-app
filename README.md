@@ -15,7 +15,7 @@ A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Cooli
 </p>
 
 <p align="center">
-  <img src="..." alt="Coolify Manager Screenshot" width="600">
+  <img width="600" alt="Coolify Manager Screenshot" src="https://github.com/user-attachments/assets/006ba73e-6086-4015-bc30-99441397ab3f" />
 </p>
 
 ## Highlights
