@@ -3,6 +3,7 @@
     "name": "Coolify Manager",
     "slug": "coolifyManager",
     "version": "1.0.0",
+    "githubUrl": "https://github.com/ontech7/coolify-manager-app",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "coolifymanager",
@@ -45,6 +46,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "832c4fd0-161f-487c-a726-6ab72ba0b768"
+      }
     }
   }
 }
