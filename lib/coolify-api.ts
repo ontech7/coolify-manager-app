@@ -36,14 +36,20 @@ export class CoolifyAPI {
   ): Promise<T> {
     const url = `${this.baseUrl}/api/v1${endpoint}`;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           ...this.headers,
           ...options.headers,
         },
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
@@ -55,10 +61,22 @@ export class CoolifyAPI {
 
       return (await response.json()) as T;
     } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          "Unable to connect to server. Please check URL and connection.",
-        );
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          throw new Error(
+            "Connection timeout. Server took too long to respond.",
+          );
+        }
+        if (
+          error.message === "Failed to fetch" ||
+          error.message === "Network request failed"
+        ) {
+          throw new Error(
+            "Unable to connect to server. Please check URL and connection.",
+          );
+        }
       }
       throw error;
     }
