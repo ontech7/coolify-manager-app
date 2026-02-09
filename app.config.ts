@@ -6,7 +6,7 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? "Coolify Manager (Dev)" : "Coolify Manager",
   slug: "coolifyManager",
-  version: "1.0.0",
+  version: "1.1.0",
   githubUrl: "https://github.com/ontech7/coolify-manager-app",
   orientation: "portrait",
   icon: "./assets/images/icon.png",

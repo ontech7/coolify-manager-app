@@ -1,7 +1,7 @@
 {
   "name": "coolify-manager-app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "start": "expo start",
     "ios": "cross-env APP_VARIANT=development expo run:ios",

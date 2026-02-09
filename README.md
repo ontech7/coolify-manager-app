@@ -5,12 +5,12 @@
 <h1 align="center">Coolify Manager App</h1>
 
 <p align="center">
-A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Coolify</a> server directly from your phone.
+A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Coolify</a> instances directly from your phone.
 </p>
 
 <p align="center">
    <img src="https://img.shields.io/badge/Expo-54.0-000020?logo=expo&logoColor=white" alt="Expo">
-   <img src="https://img.shields.io/badge/v-1.0.0-blue" alt="App Version">
+   <img src="https://img.shields.io/badge/v-1.1.0-blue" alt="App Version">
    <img src="https://img.shields.io/badge/License-MIT-61dafb" alt="License">
 </p>
 
@@ -20,6 +20,7 @@ A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Cooli
 
 ## Highlights
 
+- Manage multiple instances of Coolify servers.
 - Real-time overview of every Coolify application with status, FQDN, and repository metadata.
 - One-tap controls for start, stop, restart, deploy, and log streaming.
 - Deployment history with commit details, runtime status, and quick drill-down.
