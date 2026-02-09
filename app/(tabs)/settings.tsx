@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
+import { GITHUB_REPO_URL } from "@/constants";
 import { useConfig } from "@/hooks/useConfig";
 import { colors, radius, spacing } from "@/theme";
 import { validateApiToken, validateServerUrl } from "@/utils/validation";
@@ -10,12 +11,14 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import packageJson from "../../package.json";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -85,6 +88,16 @@ export default function SettingsScreen() {
   const handleApiTokenChange = useCallback((text: string) => {
     setApiToken(text);
     setApiTokenError(null);
+  }, []);
+
+  const handleOpenLink = useCallback(async (url: string) => {
+    const supported = await Linking.canOpenURL(url);
+
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert(`Cannot open this URL: ${url}`);
+    }
   }, []);
 
   if (isLoading) {
@@ -233,6 +246,17 @@ export default function SettingsScreen() {
             </View>
           )}
         </View>
+
+        <View style={styles.authorSection}>
+          <Text style={styles.authorText}>v{packageJson.version}</Text>
+          <Text style={styles.authorText}>·</Text>
+          <Text
+            style={[styles.authorText, styles.authorLink]}
+            onPress={() => handleOpenLink(GITHUB_REPO_URL)}
+          >
+            Made by ontech7
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -344,5 +368,19 @@ const styles = StyleSheet.create({
   },
   testResultTextError: {
     color: colors.status.error,
+  },
+  authorSection: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.md,
+    marginTop: spacing["xl"],
+  },
+  authorText: {
+    fontSize: 12,
+    color: colors.text.muted,
+  },
+  authorLink: {
+    textDecorationLine: "underline",
+    color: colors.text.primary,
   },
 });

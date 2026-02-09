@@ -60,12 +60,29 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={
-            variant === "primary" ? colors.text.primary : colors.primary.default
-          }
-        />
+        <View style={styles.textWrapper}>
+          {!adornmentEnd && (
+            <ActivityIndicator
+              size="small"
+              color={
+                variant === "primary"
+                  ? colors.text.primary
+                  : colors.primary.default
+              }
+            />
+          )}
+          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+          {adornmentEnd && (
+            <ActivityIndicator
+              size="small"
+              color={
+                variant === "primary"
+                  ? colors.text.primary
+                  : colors.primary.default
+              }
+            />
+          )}
+        </View>
       ) : (
         <View style={styles.textWrapper}>
           {adornmentStart}
