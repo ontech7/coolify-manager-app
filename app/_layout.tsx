@@ -1,5 +1,6 @@
 import { CoolifyApiProvider } from "@/providers/coolify-api-provider";
-import { colors } from "@/theme/colors";
+import { colors as themeColors } from "@/theme/colors";
+import { useTheme } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
@@ -9,14 +10,12 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const { colors } = useTheme();
+  colors.background = themeColors.background.primary;
+
   return (
     <CoolifyApiProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background.secondary },
-        }}
-      >
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="application/[uuid]/index"

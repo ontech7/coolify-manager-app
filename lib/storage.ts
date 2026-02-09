@@ -1,49 +1,138 @@
 import { STORAGE_KEYS } from "@/constants";
-import type { AppConfig } from "@/types/config";
+import type { AppConfig, CoolifyInstance } from "@/types/config";
 import * as SecureStore from "expo-secure-store";
 
-export async function getServerUrl(): Promise<string | null> {
-  return SecureStore.getItemAsync(STORAGE_KEYS.SERVER_URL);
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-export async function setServerUrl(url: string): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.SERVER_URL, url);
+async function getInstances() {
+  const raw = await SecureStore.getItemAsync(STORAGE_KEYS.INSTANCES);
+
+  if (!raw) return [];
+
+  try {
+    return JSON.parse(raw) as CoolifyInstance[];
+  } catch {
+    return [];
+  }
 }
 
-export async function getApiToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(STORAGE_KEYS.API_TOKEN);
+async function saveInstances(instances: CoolifyInstance[]) {
+  await SecureStore.setItemAsync(
+    STORAGE_KEYS.INSTANCES,
+    JSON.stringify(instances),
+  );
 }
 
-export async function setApiToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.API_TOKEN, token);
+async function getActiveInstanceId() {
+  return SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_INSTANCE_ID);
 }
 
-export async function getConfig(): Promise<AppConfig | null> {
-  const [serverUrl, apiToken] = await Promise.all([
-    getServerUrl(),
-    getApiToken(),
+async function setActiveInstanceId(id: string | null) {
+  if (id) {
+    await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_INSTANCE_ID, id);
+  } else {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_INSTANCE_ID);
+  }
+}
+
+async function migrateLegacyConfig() {
+  const existingInstances = await SecureStore.getItemAsync(
+    STORAGE_KEYS.INSTANCES,
+  );
+
+  if (existingInstances) return false;
+
+  const legacyUrl = await SecureStore.getItemAsync(
+    STORAGE_KEYS.LEGACY_SERVER_URL,
+  );
+  const legacyToken = await SecureStore.getItemAsync(
+    STORAGE_KEYS.LEGACY_API_TOKEN,
+  );
+
+  if (!legacyUrl || !legacyToken) return false;
+
+  const instance: CoolifyInstance = {
+    id: generateId(),
+    name: new URL(legacyUrl).host,
+    serverUrl: legacyUrl,
+    apiToken: legacyToken,
+  };
+
+  await saveInstances([instance]);
+  await setActiveInstanceId(instance.id);
+
+  await SecureStore.deleteItemAsync(STORAGE_KEYS.LEGACY_SERVER_URL);
+  await SecureStore.deleteItemAsync(STORAGE_KEYS.LEGACY_API_TOKEN);
+
+  return true;
+}
+
+export async function getConfig() {
+  await migrateLegacyConfig();
+
+  const [instances, activeInstanceId] = await Promise.all([
+    getInstances(),
+    getActiveInstanceId(),
   ]);
 
-  if (!serverUrl || !apiToken) {
-    return null;
+  return { instances, activeInstanceId } as AppConfig;
+}
+
+export async function saveConfig(config: AppConfig) {
+  await Promise.all([
+    saveInstances(config.instances),
+    setActiveInstanceId(config.activeInstanceId),
+  ]);
+}
+
+export async function addInstance(instance: Omit<CoolifyInstance, "id">) {
+  const instances = await getInstances();
+
+  const newInstance: CoolifyInstance = { ...instance, id: generateId() };
+  instances.push(newInstance);
+  await saveInstances(instances);
+
+  const activeId = await getActiveInstanceId();
+
+  if (!activeId) {
+    await setActiveInstanceId(newInstance.id);
   }
 
-  return {
-    serverUrl,
-    apiToken,
-  };
+  return newInstance;
 }
 
-export async function saveConfig(config: AppConfig): Promise<void> {
-  await Promise.all([
-    setServerUrl(config.serverUrl),
-    setApiToken(config.apiToken),
-  ]);
+export async function updateInstance(instance: CoolifyInstance) {
+  const instances = await getInstances();
+  const index = instances.findIndex((i) => i.id === instance.id);
+
+  if (index === -1) return;
+
+  instances[index] = instance;
+  await saveInstances(instances);
 }
 
-export async function clearConfig(): Promise<void> {
+export async function removeInstance(id: string) {
+  const instances = await getInstances();
+
+  const filtered = instances.filter((i) => i.id !== id);
+  await saveInstances(filtered);
+
+  const activeId = await getActiveInstanceId();
+
+  if (activeId === id) {
+    await setActiveInstanceId(filtered[0]?.id ?? null);
+  }
+}
+
+export async function switchActiveInstance(id: string) {
+  await setActiveInstanceId(id);
+}
+
+export async function clearConfig() {
   await Promise.all([
-    SecureStore.deleteItemAsync(STORAGE_KEYS.SERVER_URL),
-    SecureStore.deleteItemAsync(STORAGE_KEYS.API_TOKEN),
+    SecureStore.deleteItemAsync(STORAGE_KEYS.INSTANCES),
+    SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_INSTANCE_ID),
   ]);
 }

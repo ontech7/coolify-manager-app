@@ -1,13 +1,13 @@
 {
   "name": "coolify-manager-app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "start": "expo start",
-    "ios": "expo run:ios",
+    "ios": "cross-env APP_VARIANT=development expo run:ios",
     "ios-build": "eas build -p ios",
     "ios-build:submit": "eas build -p ios --auto-submit",
-    "android": "expo run:android",
+    "android": "cross-env APP_VARIANT=development expo run:android",
     "android-build:dev": "eas build -p android --profile development",
     "android-build:preview": "eas build -p android --profile preview",
     "android-build:prod": "eas build -p android --profile production",
@@ -52,6 +52,7 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "cross-env": "^10.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"

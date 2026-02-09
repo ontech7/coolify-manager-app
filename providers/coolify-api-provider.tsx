@@ -1,6 +1,7 @@
 import { configEvents } from "@/lib/config-events";
 import { CoolifyAPI } from "@/lib/coolify-api";
 import * as storage from "@/lib/storage";
+import type { CoolifyInstance } from "@/types/config";
 import {
   createContext,
   useCallback,
@@ -14,6 +15,7 @@ interface CoolifyApiContextValue {
   api: CoolifyAPI | null;
   isConfigured: boolean;
   isInitializing: boolean;
+  activeInstance: CoolifyInstance | null;
   reinitialize: () => Promise<void>;
 }
 
@@ -23,17 +25,25 @@ export function CoolifyApiProvider({ children }: { children: ReactNode }) {
   const [api, setApi] = useState<CoolifyAPI | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [activeInstance, setActiveInstance] = useState<CoolifyInstance | null>(
+    null,
+  );
 
   const initialize = useCallback(async () => {
     setIsInitializing(true);
 
     const config = await storage.getConfig();
+    const active = config.instances.find(
+      (i) => i.id === config.activeInstanceId,
+    );
 
-    if (config) {
-      setApi(new CoolifyAPI(config.serverUrl, config.apiToken));
+    if (active) {
+      setApi(new CoolifyAPI(active.serverUrl, active.apiToken));
+      setActiveInstance(active);
       setIsConfigured(true);
     } else {
       setApi(null);
+      setActiveInstance(null);
       setIsConfigured(false);
     }
 
@@ -59,7 +69,7 @@ export function CoolifyApiProvider({ children }: { children: ReactNode }) {
 
   return (
     <CoolifyApiContext.Provider
-      value={{ api, isConfigured, isInitializing, reinitialize }}
+      value={{ api, isConfigured, isInitializing, activeInstance, reinitialize }}
     >
       {children}
     </CoolifyApiContext.Provider>

@@ -2,11 +2,14 @@ import { configEvents } from "@/lib/config-events";
 import { CoolifyAPI } from "@/lib/coolify-api";
 import * as storage from "@/lib/storage";
 import type { TestConnectionResponse } from "@/types/api";
-import type { AppConfig } from "@/types/config";
+import type { AppConfig, CoolifyInstance } from "@/types/config";
 import { useCallback, useEffect, useState } from "react";
 
 export function useConfig() {
-  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig>({
+    instances: [],
+    activeInstanceId: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -14,9 +17,12 @@ export function useConfig() {
     null,
   );
 
+  const activeInstance =
+    config.instances.find((i) => i.id === config.activeInstanceId) ?? null;
+
   const loadConfig = useCallback(async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
       const savedConfig = await storage.getConfig();
       setConfig(savedConfig);
     } catch (error) {
@@ -26,35 +32,87 @@ export function useConfig() {
     }
   }, []);
 
-  const saveConfig = useCallback(async (newConfig: AppConfig) => {
-    setIsSaving(true);
+  const addInstance = useCallback(
+    async (instance: Omit<CoolifyInstance, "id">) => {
+      try {
+        setIsSaving(true);
+
+        const newInstance = await storage.addInstance(instance);
+        const updatedConfig = await storage.getConfig();
+
+        setConfig(updatedConfig);
+
+        configEvents.emit();
+
+        return newInstance;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [],
+  );
+
+  const updateInstance = useCallback(async (instance: CoolifyInstance) => {
     try {
-      await storage.saveConfig(newConfig);
-      setConfig(newConfig);
+      setIsSaving(true);
+
+      await storage.updateInstance(instance);
+
+      const updatedConfig = await storage.getConfig();
+
+      setConfig(updatedConfig);
+
       configEvents.emit();
     } finally {
       setIsSaving(false);
     }
   }, []);
 
+  const removeInstance = useCallback(async (id: string) => {
+    try {
+      setIsSaving(true);
+
+      await storage.removeInstance(id);
+
+      const updatedConfig = await storage.getConfig();
+
+      setConfig(updatedConfig);
+
+      configEvents.emit();
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const switchInstance = useCallback(async (id: string) => {
+    await storage.switchActiveInstance(id);
+
+    const updatedConfig = await storage.getConfig();
+    setConfig(updatedConfig);
+
+    configEvents.emit();
+  }, []);
+
   const testConnection = useCallback(
-    async (
-      serverUrl: string,
-      apiToken: string,
-    ): Promise<TestConnectionResponse> => {
-      setIsTesting(true);
-      setTestResult(null);
+    async (serverUrl: string, apiToken: string) => {
       try {
+        setIsTesting(true);
+        setTestResult(null);
+
         const api = new CoolifyAPI(serverUrl, apiToken);
         const result = await api.testConnection();
+
         setTestResult(result);
+
         return result;
       } catch (error) {
         const result: TestConnectionResponse = {
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
         };
+
         setTestResult(result);
+
         return result;
       } finally {
         setIsTesting(false);
@@ -73,12 +131,17 @@ export function useConfig() {
 
   return {
     config,
+    instances: config.instances,
+    activeInstance,
     isLoading,
     isSaving,
     isTesting,
     testResult,
     loadConfig,
-    saveConfig,
+    addInstance,
+    updateInstance,
+    removeInstance,
+    switchInstance,
     testConnection,
     clearTestResult,
   };

@@ -1,6 +1,6 @@
 import { isNotEmpty } from "./string";
 
-function isValidUrl(url: string): boolean {
+function isValidUrl(url: string) {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -21,7 +21,15 @@ export function validateServerUrl(url: string) {
   return null;
 }
 
-export function validateApiToken(token: string): string | null {
+export function validateInstanceName(name: string) {
+  if (!isNotEmpty(name)) {
+    return "Instance name is required";
+  }
+
+  return null;
+}
+
+export function validateApiToken(token: string) {
   if (!isNotEmpty(token)) {
     return "API token is required";
   }
