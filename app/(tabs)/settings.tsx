@@ -4,8 +4,14 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
 import { GITHUB_REPO_URL } from "@/constants";
 import { useConfig } from "@/hooks/useConfig";
+import { triggerHaptic } from "@/hooks/useHaptics";
 import { colors, radius, spacing } from "@/theme";
-import { validateApiToken, validateServerUrl } from "@/utils/validation";
+import type { CoolifyInstance } from "@/types/config";
+import {
+  validateApiToken,
+  validateInstanceName,
+  validateServerUrl,
+} from "@/utils/validation";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -13,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -20,65 +27,173 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import packageJson from "../../package.json";
 
+type FormMode =
+  | { type: "idle" }
+  | { type: "add" }
+  | { type: "edit"; instance: CoolifyInstance };
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+
   const {
-    config,
+    instances,
+    activeInstance,
     isLoading,
     isSaving,
     isTesting,
     testResult,
-    saveConfig,
+    addInstance,
+    updateInstance,
+    removeInstance,
+    switchInstance,
     testConnection,
     clearTestResult,
   } = useConfig();
 
+  const [formMode, setFormMode] = useState<FormMode>({ type: "idle" });
+
+  const [name, setName] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [apiToken, setApiToken] = useState("");
+
+  const [nameError, setNameError] = useState<string | null>(null);
   const [serverUrlError, setServerUrlError] = useState<string | null>(null);
   const [apiTokenError, setApiTokenError] = useState<string | null>(null);
 
+  const isFormOpen = formMode.type !== "idle";
+
   useEffect(() => {
-    if (config) {
-      setServerUrl(config.serverUrl);
-      setApiToken(config.apiToken);
+    if (!isLoading && instances.length === 0 && formMode.type === "idle") {
+      setFormMode({ type: "add" });
     }
-  }, [config]);
+  }, [isLoading, instances.length, formMode.type]);
 
   useEffect(() => {
     clearTestResult();
-  }, [serverUrl, apiToken, clearTestResult]);
+  }, [name, serverUrl, apiToken, clearTestResult]);
+
+  const resetForm = useCallback(() => {
+    setName("");
+    setServerUrl("");
+    setApiToken("");
+    setNameError(null);
+    setServerUrlError(null);
+    setApiTokenError(null);
+    clearTestResult();
+  }, [clearTestResult]);
+
+  const handleAdd = useCallback(() => {
+    resetForm();
+    setFormMode({ type: "add" });
+  }, [resetForm]);
+
+  const handleEdit = useCallback(
+    (instance: CoolifyInstance) => {
+      resetForm();
+      setName(instance.name);
+      setServerUrl(instance.serverUrl);
+      setApiToken(instance.apiToken);
+      setFormMode({ type: "edit", instance });
+    },
+    [resetForm],
+  );
+
+  const handleCancel = useCallback(() => {
+    resetForm();
+    setFormMode({ type: "idle" });
+  }, [resetForm]);
+
+  const handleSwitch = useCallback(
+    async (id: string) => {
+      triggerHaptic("light");
+      await switchInstance(id);
+    },
+    [switchInstance],
+  );
+
+  const handleDelete = useCallback(
+    (instance: CoolifyInstance) => {
+      Alert.alert(
+        "Delete Instance",
+        `Are you sure you want to delete "${instance.name}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await removeInstance(instance.id);
+              if (
+                formMode.type === "edit" &&
+                formMode.instance.id === instance.id
+              ) {
+                handleCancel();
+              }
+            },
+          },
+        ],
+      );
+    },
+    [removeInstance, formMode, handleCancel],
+  );
 
   const validateForm = useCallback((): boolean => {
+    const nameError = validateInstanceName(name);
     const urlError = validateServerUrl(serverUrl);
     const tokenError = validateApiToken(apiToken);
 
+    setNameError(nameError);
     setServerUrlError(urlError);
     setApiTokenError(tokenError);
 
-    return !urlError && !tokenError;
-  }, [serverUrl, apiToken]);
+    return !nameError && !urlError && !tokenError;
+  }, [name, serverUrl, apiToken]);
 
   const handleTestConnection = useCallback(async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     await testConnection(serverUrl, apiToken);
   }, [validateForm, testConnection, serverUrl, apiToken]);
 
   const handleSave = useCallback(async () => {
-    if (!validateForm()) {
-      return;
+    if (!validateForm()) return;
+
+    if (formMode.type === "add") {
+      await addInstance({
+        name: name.trim(),
+        serverUrl: serverUrl.trim(),
+        apiToken: apiToken.trim(),
+      });
+    } else if (formMode.type === "edit") {
+      await updateInstance({
+        id: formMode.instance.id,
+        name: name.trim(),
+        serverUrl: serverUrl.trim(),
+        apiToken: apiToken.trim(),
+      });
     }
 
-    await saveConfig({
-      serverUrl: serverUrl.trim(),
-      apiToken: apiToken.trim(),
-    });
+    resetForm();
+    setFormMode({ type: "idle" });
 
-    Alert.alert("Success", "Configuration saved successfully!");
-  }, [validateForm, saveConfig, serverUrl, apiToken]);
+    Alert.alert(
+      "Success",
+      formMode.type === "add" ? "Instance added!" : "Instance updated!",
+    );
+  }, [
+    validateForm,
+    formMode,
+    addInstance,
+    updateInstance,
+    name,
+    serverUrl,
+    apiToken,
+    resetForm,
+  ]);
+
+  const handleNameChange = useCallback((text: string) => {
+    setName(text);
+    setNameError(null);
+  }, []);
 
   const handleServerUrlChange = useCallback((text: string) => {
     setServerUrl(text);
@@ -92,7 +207,6 @@ export default function SettingsScreen() {
 
   const handleOpenLink = useCallback(async (url: string) => {
     const supported = await Linking.canOpenURL(url);
-
     if (supported) {
       await Linking.openURL(url);
     } else {
@@ -127,125 +241,243 @@ export default function SettingsScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
           <Text style={styles.subtitle}>
-            Configure your Coolify server connection
+            Manage your Coolify server instances
           </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Server Configuration</Text>
+        {!isFormOpen && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Instances</Text>
 
-          <Input
-            label="Server URL"
-            placeholder="https://coolify.example.com"
-            value={serverUrl}
-            onChangeText={handleServerUrlChange}
-            error={serverUrlError ?? undefined}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
+            {instances.map((instance) => {
+              const isActive = instance.id === activeInstance?.id;
 
-          <Input
-            label="API Token"
-            placeholder="Enter your API token"
-            value={apiToken}
-            onChangeText={handleApiTokenChange}
-            error={apiTokenError ?? undefined}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            containerStyle={styles.inputSpacing}
-          />
+              return (
+                <Pressable
+                  key={instance.id}
+                  style={[
+                    styles.instanceCard,
+                    isActive && styles.instanceCardActive,
+                  ]}
+                  onPress={() => !isActive && handleSwitch(instance.id)}
+                >
+                  <View style={styles.instanceInfo}>
+                    <View style={styles.instanceNameRow}>
+                      {isActive && (
+                        <MaterialIcons
+                          name="check-circle"
+                          size={16}
+                          color={colors.status.success}
+                        />
+                      )}
+                      <Text
+                        style={[
+                          styles.instanceName,
+                          isActive && styles.instanceNameActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {instance.name}
+                      </Text>
+                    </View>
+                    <Text style={styles.instanceUrl} numberOfLines={1}>
+                      {instance.serverUrl}
+                    </Text>
+                  </View>
+                  <View style={styles.instanceActions}>
+                    <Pressable
+                      style={styles.instanceActionButton}
+                      onPress={() => handleEdit(instance)}
+                      hitSlop={8}
+                    >
+                      <MaterialIcons
+                        name="edit"
+                        size={18}
+                        color={colors.text.muted}
+                      />
+                    </Pressable>
+                    {instances.length > 1 && (
+                      <Pressable
+                        style={styles.instanceActionButton}
+                        onPress={() => handleDelete(instance)}
+                        hitSlop={8}
+                      >
+                        <MaterialIcons
+                          name="delete-outline"
+                          size={18}
+                          color={colors.status.error}
+                        />
+                      </Pressable>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
 
-          <View style={styles.helpBox}>
-            <Text style={styles.helpBoxTitle}>How to generate the token:</Text>
-            <View style={styles.helpBoxList}>
-              <Text style={styles.helpBoxListItem}>
-                1. Go to{" "}
-                <Text style={styles.helpBoxHighlight}>
-                  Settings → Advanced → API Access
-                </Text>{" "}
-                and enable the API
+            <Pressable style={styles.addButton} onPress={handleAdd}>
+              <MaterialIcons
+                name="add"
+                size={20}
+                color={colors.primary.light}
+              />
+              <Text style={styles.addButtonText}>Add Instance</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {isFormOpen && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {formMode.type === "add" ? "New Instance" : "Edit Instance"}
+            </Text>
+
+            <Input
+              label="Instance Name"
+              placeholder="e.g. Home Server"
+              value={name}
+              onChangeText={handleNameChange}
+              error={nameError ?? undefined}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+
+            <Input
+              label="Server URL"
+              placeholder="https://coolify.example.com"
+              value={serverUrl}
+              onChangeText={handleServerUrlChange}
+              error={serverUrlError ?? undefined}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              containerStyle={styles.inputSpacing}
+            />
+
+            <Input
+              label="API Token"
+              placeholder="Enter your API token"
+              value={apiToken}
+              onChangeText={handleApiTokenChange}
+              error={apiTokenError ?? undefined}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              containerStyle={styles.inputSpacing}
+            />
+
+            <View style={styles.helpBox}>
+              <Text style={styles.helpBoxTitle}>
+                How to generate the token:
               </Text>
-              <Text style={styles.helpBoxListItem}>
-                2. Go to{" "}
-                <Text style={styles.helpBoxHighlight}>
-                  Keys & Tokens → API Tokens
+              <View style={styles.helpBoxList}>
+                <Text style={styles.helpBoxListItem}>
+                  1. Go to{" "}
+                  <Text style={styles.helpBoxHighlight}>
+                    Settings → Advanced → API Access
+                  </Text>{" "}
+                  and enable the API
                 </Text>
-              </Text>
-              <Text style={styles.helpBoxListItem}>
-                Create a new token with permissions:
-              </Text>
-              <View style={styles.badgeRow}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>read</Text>
-                </View>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>write</Text>
-                </View>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>deploy</Text>
+                <Text style={styles.helpBoxListItem}>
+                  2. Go to{" "}
+                  <Text style={styles.helpBoxHighlight}>
+                    Keys & Tokens → API Tokens
+                  </Text>
+                </Text>
+                <Text style={styles.helpBoxListItem}>
+                  Create a new token with permissions:
+                </Text>
+                <View style={styles.badgeRow}>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>read</Text>
+                  </View>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>write</Text>
+                  </View>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>deploy</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        </View>
 
-        <View style={styles.footer}>
-          <Button
-            title={isTesting ? "Testing..." : "Test Connection"}
-            variant="secondary"
-            adornmentStart={
-              <MaterialIcons
-                name="check-circle-outline"
-                size={20}
-                color={colors.text.primary}
+            <View style={styles.formActions}>
+              <Button
+                title={isTesting ? "Testing..." : "Test Connection"}
+                variant="secondary"
+                adornmentStart={
+                  <MaterialIcons
+                    name="check-circle-outline"
+                    size={20}
+                    color={colors.text.primary}
+                  />
+                }
+                onPress={handleTestConnection}
+                loading={isTesting}
+                disabled={!serverUrl || !apiToken}
               />
-            }
-            onPress={handleTestConnection}
-            loading={isTesting}
-            disabled={!serverUrl || !apiToken}
-          />
-          <Button
-            title={isSaving ? "Saving..." : "Save Configuration"}
-            adornmentStart={
-              <MaterialIcons
-                name="save"
-                size={20}
-                color={colors.text.primary}
+              <Button
+                title={isSaving ? "Saving..." : "Save"}
+                adornmentStart={
+                  <MaterialIcons
+                    name="save"
+                    size={20}
+                    color={colors.text.primary}
+                  />
+                }
+                onPress={handleSave}
+                loading={isSaving}
+                disabled={!name || !serverUrl || !apiToken}
               />
-            }
-            onPress={handleSave}
-            loading={isSaving}
-            disabled={!serverUrl || !apiToken}
-          />
-        </View>
+            </View>
 
-        <View style={styles.testSection}>
-          {testResult && (
-            <View
-              style={[
-                styles.testResult,
-                testResult.success
-                  ? styles.testResultSuccess
-                  : styles.testResultError,
-              ]}
-            >
-              <Text
+            {instances.length > 0 && (
+              <View
+                style={{
+                  marginTop: spacing["2xl"],
+                  alignItems: "center",
+                }}
+              >
+                <Button
+                  title="Cancel"
+                  variant="secondary"
+                  adornmentStart={
+                    <MaterialIcons
+                      name="close"
+                      size={20}
+                      color={colors.text.secondary}
+                    />
+                  }
+                  onPress={handleCancel}
+                  style={styles.cancelButton}
+                />
+              </View>
+            )}
+
+            {testResult && (
+              <View
                 style={[
-                  styles.testResultText,
+                  styles.testResult,
                   testResult.success
-                    ? styles.testResultTextSuccess
-                    : styles.testResultTextError,
+                    ? styles.testResultSuccess
+                    : styles.testResultError,
                 ]}
               >
-                {testResult.success
-                  ? "✓ Connection successful!"
-                  : `✗ ${testResult.error || "Connection failed"}`}
-              </Text>
-            </View>
-          )}
-        </View>
+                <Text
+                  style={[
+                    styles.testResultText,
+                    testResult.success
+                      ? styles.testResultTextSuccess
+                      : styles.testResultTextError,
+                  ]}
+                >
+                  {testResult.success
+                    ? "✓ Connection successful!"
+                    : `✗ ${testResult.error || "Connection failed"}`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.authorSection}>
           <Text style={styles.authorText}>v{packageJson.version}</Text>
@@ -297,6 +529,74 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+
+  // Instance card
+  instanceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  instanceCardActive: {
+    borderColor: colors.primary.default,
+  },
+  instanceCardEditing: {
+    borderColor: colors.status.warning,
+  },
+  instanceInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  instanceNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  instanceName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text.primary,
+  },
+  instanceNameActive: {
+    color: colors.primary.light,
+  },
+  instanceUrl: {
+    fontSize: 12,
+    color: colors.text.muted,
+    marginTop: 2,
+  },
+  instanceActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  instanceActionButton: {
+    padding: spacing.xs,
+  },
+
+  // Add button
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderRadius: radius.md,
+    borderStyle: "dashed",
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: colors.primary.light,
+  },
+
+  // Form
   inputSpacing: {
     marginTop: spacing.lg,
   },
@@ -338,19 +638,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.status.warning,
   },
-  footer: {
+  formActions: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     gap: spacing.lg,
   },
-  testSection: {
-    marginTop: spacing["4xl"],
-    gap: spacing.lg,
+  cancelButton: {
+    marginTop: spacing.md,
   },
+
+  // Test result
   testResult: {
     padding: spacing.lg,
     borderRadius: radius.md,
+    marginTop: spacing.xl,
   },
   testResultSuccess: {
     backgroundColor: colors.status.successBg,
@@ -369,11 +671,13 @@ const styles = StyleSheet.create({
   testResultTextError: {
     color: colors.status.error,
   },
+
+  // Author
   authorSection: {
     flexDirection: "row",
     justifyContent: "center",
     gap: spacing.md,
-    marginTop: spacing["xl"],
+    marginTop: spacing.xl,
   },
   authorText: {
     fontSize: 12,
