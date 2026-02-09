@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from "expo/config";
+import { ConfigContext, ExpoConfig } from "expo/config";
 
 const IS_DEV = process.env.APP_VARIANT === "development";
 
@@ -21,7 +21,7 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: "#00000000",
+      backgroundImage: "./assets/images/adaptive-icon-bg.png",
       foregroundImage: "./assets/images/adaptive-icon.png",
     },
     edgeToEdgeEnabled: true,
