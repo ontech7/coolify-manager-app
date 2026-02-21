@@ -66,6 +66,10 @@ Built by Andrea Losavio • [LinkedIn](https://www.linkedin.com/in/andrea-losavi
 
 - [Coolify](https://coolify.io/) - The amazing self-hostable Heroku/Netlify alternative
 
+## Disclaimer
+
+This project is a community initiative and is not affiliated with or maintained by the official Coolify team.
+
 ---
 
 Made with ❤️ for the Coolify community
