@@ -3,9 +3,9 @@ import { IconButton } from "@/components/ui/icon-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { colors, radius, spacing } from "@/theme";
-import type { DeploymentResponse, DeploymentStatus } from "@/types/api";
+import type { DeploymentResponse } from "@/types/api";
 import { formatRelativeTime } from "@/utils/date";
-import { canCancelDeployment } from "@/utils/status";
+import { canCancelDeployment, getDeploymentStatus } from "@/utils/status";
 import { truncateCommit, truncateMessage } from "@/utils/string";
 import { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
@@ -23,7 +23,8 @@ export function DeploymentCard({
 }: DeploymentCardProps) {
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const canCancel = canCancelDeployment(deployment.status as DeploymentStatus);
+  const status = getDeploymentStatus(deployment.status);
+  const canCancel = canCancelDeployment(deployment.status);
 
   const handlePress = useCallback(() => {
     onPress(deployment.deployment_uuid);
@@ -92,7 +93,7 @@ export function DeploymentCard({
               disabled={isCancelling}
             />
           )}
-          <StatusBadge status={deployment.status as DeploymentStatus} />
+          <StatusBadge status={status} />
         </View>
       </View>
 
