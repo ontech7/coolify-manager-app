@@ -1,8 +1,13 @@
 import type {
+  ApplicationDeploymentsResponse,
   ApplicationLogsResponse,
   ApplicationResponse,
+  DatabaseResponse,
   DeploymentResponse,
   DeployResponse,
+  ServerResource,
+  ServerResponse,
+  ServiceResponse,
 } from "@/types/api";
 
 interface RequestOptions extends RequestInit {
@@ -129,7 +134,7 @@ export class CoolifyAPI {
   }
 
   async getDeploymentsByApp(uuid: string, skip: number = 0, take: number = 10) {
-    return this.request<DeploymentResponse[]>(
+    return this.request<ApplicationDeploymentsResponse>(
       `/deployments/applications/${uuid}?skip=${skip}&take=${take}`,
     );
   }
@@ -140,5 +145,59 @@ export class CoolifyAPI {
 
   async cancelDeployment(uuid: string) {
     await this.request<void>(`/deployments/${uuid}/cancel`, { method: "POST" });
+  }
+
+  // Databases
+
+  async getDatabases() {
+    return this.request<DatabaseResponse[]>("/databases");
+  }
+
+  async startDatabase(uuid: string) {
+    await this.request<void>(`/databases/${uuid}/start`);
+  }
+
+  async stopDatabase(uuid: string) {
+    await this.request<void>(`/databases/${uuid}/stop`);
+  }
+
+  async restartDatabase(uuid: string) {
+    await this.request<void>(`/databases/${uuid}/restart`);
+  }
+
+  // Services
+
+  async getServices() {
+    return this.request<ServiceResponse[]>("/services");
+  }
+
+  async startService(uuid: string) {
+    await this.request<void>(`/services/${uuid}/start`);
+  }
+
+  async stopService(uuid: string) {
+    await this.request<void>(`/services/${uuid}/stop`);
+  }
+
+  async restartService(uuid: string) {
+    await this.request<void>(`/services/${uuid}/restart`);
+  }
+
+  // Servers
+
+  async getServers() {
+    return this.request<ServerResponse[]>("/servers");
+  }
+
+  async getServer(uuid: string) {
+    return this.request<ServerResponse>(`/servers/${uuid}`);
+  }
+
+  async getServerResources(uuid: string) {
+    return this.request<ServerResource[]>(`/servers/${uuid}/resources`);
+  }
+
+  async validateServer(uuid: string) {
+    await this.request<void>(`/servers/${uuid}/validate`);
   }
 }
