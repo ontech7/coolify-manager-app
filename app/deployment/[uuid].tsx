@@ -1,16 +1,40 @@
 import { DetailRow } from "@/components/detail-row";
+import { DetailTable } from "@/components/detail-table";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
-import type { DeploymentResponse, DeploymentStatus } from "@/types/api";
+import type { DeploymentResponse } from "@/types/api";
 import { formatDateTime } from "@/utils/date";
+import { getDeploymentStatus } from "@/utils/status";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+/**
+ * Coolify stores deployment logs as a JSON-encoded array of entries
+ * ({ output, type, timestamp, hidden, ... }). Fall back to the raw string if
+ * it isn't valid JSON.
+ */
+function parseDeploymentLogs(raw?: string | null): string {
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((entry) => entry && !entry.hidden && entry.output != null)
+        .map((entry) => String(entry.output))
+        .join("\n")
+        .trim();
+    }
+  } catch {
+    // Not JSON — show as-is.
+  }
+  return raw.trim();
+}
 
 export default function DeploymentDetails() {
   const { uuid } = useLocalSearchParams<{ uuid: string }>();
@@ -62,6 +86,8 @@ export default function DeploymentDetails() {
     fetchDeployment();
   }, [fetchDeployment]);
 
+  const buildLogs = parseDeploymentLogs(deployment?.logs);
+
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -106,14 +132,24 @@ export default function DeploymentDetails() {
         ]}
       >
         <View style={styles.statusRow}>
-          <StatusBadge status={deployment.status as DeploymentStatus} />
+          <StatusBadge status={getDeploymentStatus(deployment.status)} />
         </View>
 
-        <View style={styles.table}>
-          <DetailRow label="UUID" value={deployment.deployment_uuid} mono />
+        <DetailTable>
+          <DetailRow
+            label="UUID"
+            value={deployment.deployment_uuid}
+            mono
+            copyable
+          />
           <DetailRow label="Application" value={deployment.application_name} />
           <DetailRow label="Server" value={deployment.server_name} />
-          <DetailRow label="Commit" value={deployment.commit || "n/a"} mono />
+          <DetailRow
+            label="Commit"
+            value={deployment.commit || "n/a"}
+            mono
+            copyable={!!deployment.commit}
+          />
           <DetailRow
             label="Message"
             value={deployment.commit_message || "n/a"}
@@ -143,7 +179,18 @@ export default function DeploymentDetails() {
             label="Updated"
             value={formatDateTime(deployment.updated_at)}
           />
-        </View>
+        </DetailTable>
+
+        {buildLogs ? (
+          <View style={styles.logsSection}>
+            <Text style={styles.logsTitle}>Build Logs</Text>
+            <View style={styles.logsBox}>
+              <Text style={styles.logsText} selectable>
+                {buildLogs}
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -185,10 +232,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: spacing.xl,
   },
-  table: {
-    backgroundColor: colors.surface.default,
+  logsSection: {
+    marginTop: spacing.xl,
+  },
+  logsTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
+  },
+  logsBox: {
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
     borderRadius: radius.lg,
-    overflow: "hidden",
+    padding: spacing.lg,
+  },
+  logsText: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    lineHeight: 18,
+    color: colors.text.secondary,
   },
   errorContainer: {
     flex: 1,

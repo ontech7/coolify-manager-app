@@ -1,6 +1,9 @@
 import { DeploymentCard } from "@/components/deployments/deployment-card";
-import { EmptyDeployments } from "@/components/deployments/empty-deployments";
 import { ErrorState } from "@/components/error-state";
+import {
+  EmptyState,
+  NotConfiguredEmptyState,
+} from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
@@ -85,11 +88,16 @@ export default function DeploymentsScreen() {
 
   const renderEmpty = useCallback(() => {
     if (isLoading) return null;
+    if (!isConfigured) {
+      return <NotConfiguredEmptyState onGoToSettings={handleGoToSettings} />;
+    }
     return (
-      <EmptyDeployments
-        isConfigured={isConfigured}
-        onGoToSettings={handleGoToSettings}
-        onRefresh={refresh}
+      <EmptyState
+        icon="rocket"
+        title="No Active Deployments"
+        message="Nothing is deploying right now. This tab shows active and in-progress deployments. To see past deployments, open an application and tap the history icon."
+        actionLabel="Refresh"
+        onAction={refresh}
       />
     );
   }, [isLoading, isConfigured, handleGoToSettings, refresh]);
@@ -113,7 +121,10 @@ export default function DeploymentsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <Text style={styles.title}>Deployments</Text>
+        <View style={styles.titleGroup}>
+          <Text style={styles.title}>Deployments</Text>
+          <Text style={styles.subtitle}>Active & in progress</Text>
+        </View>
         <View style={styles.headerActions}>
           <Pressable
             style={[
@@ -188,10 +199,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surface.border,
   },
+  titleGroup: {
+    gap: spacing.xs,
+  },
   title: {
     fontSize: 28,
     fontWeight: "700",
     color: colors.text.primary,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: colors.text.muted,
   },
   headerActions: {
     flexDirection: "row",
@@ -220,7 +238,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.xl,
-    gap: spacing.md,
   },
   emptyList: {
     flex: 1,
