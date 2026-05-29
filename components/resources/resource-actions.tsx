@@ -1,39 +1,43 @@
+import { IconButton } from "@/components/ui/icon-button";
 import { triggerHaptic } from "@/hooks/useHaptics";
 import { spacing } from "@/theme";
-import type { ApplicationResponse } from "@/types/api";
-import { isApplicationRunning } from "@/utils/status";
-import { IconButton } from "@/components/ui/icon-button";
+import type { Resource, ResourceType } from "@/types/api";
+import { isResourceRunning } from "@/utils/status";
 import { useCallback, useState } from "react";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 
-interface ApplicationActionsProps {
-  application: ApplicationResponse;
+interface ResourceActionsProps {
+  resource: Resource;
   onDeploy: (uuid: string) => Promise<void>;
-  onRestart: (uuid: string) => Promise<void>;
-  onStart: (uuid: string) => Promise<void>;
-  onStop: (uuid: string) => Promise<void>;
+  onRestart: (uuid: string, type: ResourceType) => Promise<void>;
+  onStart: (uuid: string, type: ResourceType) => Promise<void>;
+  onStop: (uuid: string, type: ResourceType) => Promise<void>;
   onViewLogs: (uuid: string) => void;
 }
 
 type ActionType = "deploy" | "restart" | "start" | "stop";
 
-export function ApplicationActions({
-  application,
+export function ResourceActions({
+  resource,
   onDeploy,
   onRestart,
   onStart,
   onStop,
   onViewLogs,
-}: ApplicationActionsProps) {
+}: ResourceActionsProps) {
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
 
-  const isRunning = isApplicationRunning(application);
+  const isApplication = resource.resourceType === "application";
+  const isRunning = isResourceRunning(resource.status);
 
   const handleAction = useCallback(
-    async (action: ActionType, handler: (uuid: string) => Promise<void>) => {
+    async (
+      action: ActionType,
+      handler: (uuid: string, type: ResourceType) => Promise<void>,
+    ) => {
       setLoadingAction(action);
       try {
-        await handler(application.uuid);
+        await handler(resource.uuid, resource.resourceType);
         triggerHaptic("success");
       } catch (error) {
         triggerHaptic("error");
@@ -41,84 +45,85 @@ export function ApplicationActions({
           "Error",
           error instanceof Error
             ? error.message
-            : `Failed to ${action} application`,
+            : `Failed to ${action} ${resource.resourceType}`,
         );
       } finally {
         setLoadingAction(null);
       }
     },
-    [application.uuid],
+    [resource.uuid, resource.resourceType],
   );
 
   const handleDeploy = useCallback(() => {
     triggerHaptic("warning");
     Alert.alert(
       "Deploy Application",
-      `Are you sure you want to deploy "${application.name}"?`,
+      `Are you sure you want to deploy "${resource.name}"?`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Deploy", onPress: () => handleAction("deploy", onDeploy) },
+        {
+          text: "Deploy",
+          onPress: () => handleAction("deploy", () => onDeploy(resource.uuid)),
+        },
       ],
     );
-  }, [application.name, handleAction, onDeploy]);
+  }, [resource.name, resource.uuid, handleAction, onDeploy]);
 
   const handleRestart = useCallback(() => {
     triggerHaptic("warning");
     Alert.alert(
-      "Restart Application",
-      `Are you sure you want to restart "${application.name}"?`,
+      "Restart",
+      `Are you sure you want to restart "${resource.name}"?`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Restart", onPress: () => handleAction("restart", onRestart) },
       ],
     );
-  }, [application.name, handleAction, onRestart]);
+  }, [resource.name, handleAction, onRestart]);
 
   const handleStartStop = useCallback(() => {
     if (isRunning) {
       triggerHaptic("warning");
-      Alert.alert(
-        "Stop Application",
-        `Are you sure you want to stop "${application.name}"?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Stop",
-            style: "destructive",
-            onPress: () => handleAction("stop", onStop),
-          },
-        ],
-      );
+      Alert.alert("Stop", `Are you sure you want to stop "${resource.name}"?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Stop",
+          style: "destructive",
+          onPress: () => handleAction("stop", onStop),
+        },
+      ]);
     } else {
       handleAction("start", onStart);
     }
-  }, [isRunning, application.name, handleAction, onStart, onStop]);
+  }, [isRunning, resource.name, handleAction, onStart, onStop]);
 
   const handleViewLogs = useCallback(() => {
-    onViewLogs(application.uuid);
-  }, [application.uuid, onViewLogs]);
+    onViewLogs(resource.uuid);
+  }, [resource.uuid, onViewLogs]);
 
   const handleOpenWebsite = useCallback(() => {
-    if (application.fqdn) {
-      const firstUrl = application.fqdn.split(",")[0].trim();
+    if (resource.fqdn) {
+      const firstUrl = resource.fqdn.split(",")[0].trim();
       const url = firstUrl.startsWith("http")
         ? firstUrl
         : `https://${firstUrl}`;
       Linking.openURL(url);
     }
-  }, [application.fqdn]);
+  }, [resource.fqdn]);
 
   return (
     <View style={styles.container}>
       <View style={styles.actionsLeft}>
-        <IconButton
-          name="rocket"
-          size={14}
-          variant="deploy"
-          onPress={handleDeploy}
-          loading={loadingAction === "deploy"}
-          disabled={loadingAction !== null}
-        />
+        {isApplication && (
+          <IconButton
+            name="rocket"
+            size={14}
+            variant="deploy"
+            onPress={handleDeploy}
+            loading={loadingAction === "deploy"}
+            disabled={loadingAction !== null}
+          />
+        )}
         <IconButton
           name="restart-alt"
           size={14}
@@ -137,14 +142,16 @@ export function ApplicationActions({
         />
       </View>
       <View style={styles.actionsRight}>
-        <IconButton
-          name="article"
-          size={14}
-          variant="default"
-          onPress={handleViewLogs}
-          disabled={loadingAction !== null}
-        />
-        {application.fqdn && (
+        {isApplication && (
+          <IconButton
+            name="article"
+            size={14}
+            variant="default"
+            onPress={handleViewLogs}
+            disabled={loadingAction !== null}
+          />
+        )}
+        {isApplication && resource.fqdn && (
           <IconButton
             name="open-in-new"
             size={14}

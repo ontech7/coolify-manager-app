@@ -68,6 +68,7 @@ export interface DeploymentResponse {
   restart_only: boolean;
   created_at: string;
   updated_at: string;
+  logs?: string | null;
 }
 
 export type DeploymentStatus =
@@ -76,3 +77,80 @@ export type DeploymentStatus =
   | "in_progress"
   | "queued"
   | "cancelled";
+
+/**
+ * Response of GET /deployments/applications/{uuid}. Coolify wraps the list in
+ * an object with the total count (NOT a bare array).
+ */
+export interface ApplicationDeploymentsResponse {
+  count: number;
+  deployments: DeploymentResponse[];
+}
+
+// Databases
+// The /databases endpoint returns standalone databases of various engines
+// (postgresql, mysql, redis, ...). The OpenAPI spec types them loosely, so we
+// only rely on the fields that are always present and read the rest defensively.
+
+export interface DatabaseResponse {
+  uuid: string;
+  name: string;
+  status?: string;
+  description?: string | null;
+  image?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Services
+
+export interface ServiceResponse {
+  uuid: string;
+  name: string;
+  status?: string;
+  description?: string | null;
+  service_type?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Servers
+
+export interface ServerSettings {
+  is_reachable?: boolean;
+  is_usable?: boolean;
+  is_build_server?: boolean;
+}
+
+export interface ServerResponse {
+  uuid: string;
+  name: string;
+  description?: string | null;
+  ip?: string;
+  port?: number;
+  user?: string;
+  settings?: ServerSettings;
+}
+
+export interface ServerResource {
+  uuid: string;
+  name: string;
+  type: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Unified resource (application | database | service)
+
+export type ResourceType = "application" | "database" | "service";
+
+export interface Resource {
+  uuid: string;
+  name: string;
+  status?: string;
+  resourceType: ResourceType;
+  subtitle?: string | null;
+  /** Applications only — used for the "open website" action. */
+  fqdn?: string | null;
+}

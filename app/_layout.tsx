@@ -32,7 +32,28 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="application/[uuid]/deployments"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
           name="deployment/[uuid]"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="disclaimer"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="server/[uuid]"
           options={{
             presentation: "transparentModal",
             animation: "fade_from_bottom",

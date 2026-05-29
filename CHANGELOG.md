@@ -1,3 +1,14 @@
+## v1.2.0
+
+- Add unified Resources view for applications, databases and services
+- Add per-application deployment history
+- Add Servers tab with health status and server detail
+- Add build logs to deployment details
+- Add copy-to-clipboard for UUIDs, repositories and server IPs
+- Split multi-domain URLs into separate, tappable links
+- Add disclaimer screen in settings
+- Fix deployment status label (finished now shows as success)
+
 ## v1.1.0
 
 - Implement multiple Coolify instance management in settings

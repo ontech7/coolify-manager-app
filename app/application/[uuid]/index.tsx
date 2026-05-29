@@ -1,15 +1,17 @@
 import { DetailRow } from "@/components/detail-row";
+import { DetailTable } from "@/components/detail-table";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { ApplicationResponse } from "@/types/api";
 import { formatDateTime } from "@/utils/date";
 import { getApplicationStatus } from "@/utils/status";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -65,11 +67,23 @@ export default function ApplicationDetailsModal() {
     router.push(`/application/${uuid}/logs` as Href);
   }, [router, uuid]);
 
-  const handleOpenWebsite = useCallback(() => {
-    if (application?.fqdn) {
-      Linking.openURL(application.fqdn);
-    }
-  }, [application?.fqdn]);
+  const handleViewDeployments = useCallback(() => {
+    router.push(`/application/${uuid}/deployments` as Href);
+  }, [router, uuid]);
+
+  const fqdnUrls = useMemo(
+    () =>
+      (application?.fqdn ?? "")
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean),
+    [application?.fqdn],
+  );
+
+  const handleOpenUrl = useCallback((url: string) => {
+    const normalized = url.startsWith("http") ? url : `https://${url}`;
+    Linking.openURL(normalized);
+  }, []);
 
   if (isLoading) {
     return (
@@ -103,10 +117,7 @@ export default function ApplicationDetailsModal() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {application.name}
         </Text>
-        <View style={styles.headerActions}>
-          <IconButton name="article" size={24} onPress={handleViewLogs} />
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
+        <IconButton name="close" size={24} onPress={handleClose} />
       </View>
 
       <ScrollView
@@ -120,18 +131,48 @@ export default function ApplicationDetailsModal() {
           <StatusBadge status={status} />
         </View>
 
-        <View style={styles.table}>
-          <DetailRow label="UUID" value={application.uuid} mono />
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.actionButton} onPress={handleViewDeployments}>
+            <MaterialIcons
+              name="history"
+              size={20}
+              color={colors.primary.light}
+            />
+            <Text style={styles.actionButtonText}>History</Text>
+          </Pressable>
+          <Pressable style={styles.actionButton} onPress={handleViewLogs}>
+            <MaterialIcons
+              name="article"
+              size={20}
+              color={colors.primary.light}
+            />
+            <Text style={styles.actionButtonText}>Logs</Text>
+          </Pressable>
+        </View>
+
+        <DetailTable>
+          <DetailRow label="UUID" value={application.uuid} mono copyable />
           <DetailRow label="Type" value={application.type} />
           <DetailRow label="Build Pack" value={application.build_pack} />
           <DetailRow label="URL">
-            <Pressable onPress={handleOpenWebsite}>
-              <Text style={styles.linkValue}>{application.fqdn || "n/a"}</Text>
-            </Pressable>
+            {fqdnUrls.length > 0 ? (
+              <View style={styles.linkList}>
+                {fqdnUrls.map((url) => (
+                  <Pressable key={url} onPress={() => handleOpenUrl(url)}>
+                    <Text style={styles.linkValue} numberOfLines={1}>
+                      {url}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.naValue}>n/a</Text>
+            )}
           </DetailRow>
           <DetailRow
             label="Repository"
             value={application.git_repository || "n/a"}
+            copyable={!!application.git_repository}
           />
           <DetailRow
             label="Branch"
@@ -146,7 +187,7 @@ export default function ApplicationDetailsModal() {
             label="Updated"
             value={formatDateTime(application.updated_at)}
           />
-        </View>
+        </DetailTable>
       </ScrollView>
     </View>
   );
@@ -173,11 +214,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginRight: spacing.lg,
   },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-  },
   content: {
     flex: 1,
   },
@@ -188,15 +224,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: spacing.xl,
   },
-  table: {
+  actionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
     backgroundColor: colors.surface.default,
-    borderRadius: radius.lg,
-    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderRadius: radius.md,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.text.primary,
+  },
+  linkList: {
+    flex: 1,
+    gap: spacing.sm,
   },
   linkValue: {
     fontSize: 13,
     color: colors.status.info,
     textDecorationLine: "underline",
+  },
+  naValue: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text.secondary,
   },
   errorContainer: {
     flex: 1,
