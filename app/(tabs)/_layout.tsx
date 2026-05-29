@@ -20,7 +20,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Applications",
+          title: "Resources",
           tabBarIcon: ({ color }) => (
             <MaterialIcons size={24} name="layers" color={color} />
           ),
@@ -32,6 +32,15 @@ export default function TabLayout() {
           title: "Deployments",
           tabBarIcon: ({ color }) => (
             <MaterialIcons size={24} name="rocket" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="servers"
+        options={{
+          title: "Servers",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons size={24} name="dns" color={color} />
           ),
         }}
       />
