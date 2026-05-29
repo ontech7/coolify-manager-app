@@ -13,6 +13,7 @@ import {
   validateServerUrl,
 } from "@/utils/validation";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -34,6 +35,7 @@ type FormMode =
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const {
     instances,
@@ -204,6 +206,10 @@ export default function SettingsScreen() {
     setApiToken(text);
     setApiTokenError(null);
   }, []);
+
+  const handleOpenDisclaimer = useCallback(() => {
+    router.push("/disclaimer" as Href);
+  }, [router]);
 
   const handleOpenLink = useCallback(async (url: string) => {
     const supported = await Linking.canOpenURL(url);
@@ -480,14 +486,28 @@ export default function SettingsScreen() {
         )}
 
         <View style={styles.authorSection}>
-          <Text style={styles.authorText}>v{packageJson.version}</Text>
-          <Text style={styles.authorText}>·</Text>
-          <Text
-            style={[styles.authorText, styles.authorLink]}
-            onPress={() => handleOpenLink(GITHUB_REPO_URL)}
-          >
-            Made by ontech7
-          </Text>
+          <View style={styles.authorSectionRow}>
+            <Pressable style={styles.linkRow} onPress={handleOpenDisclaimer}>
+              <View style={styles.linkRowLeft}>
+                <MaterialIcons
+                  name="info-outline"
+                  size={20}
+                  color={colors.text.muted}
+                />
+                <Text style={styles.linkRowText}>Disclaimer</Text>
+              </View>
+            </Pressable>
+          </View>
+          <View style={styles.authorSectionRow}>
+            <Text style={styles.authorText}>v{packageJson.version}</Text>
+            <Text style={styles.authorText}>·</Text>
+            <Text
+              style={[styles.authorText, styles.authorLink]}
+              onPress={() => handleOpenLink(GITHUB_REPO_URL)}
+            >
+              Made by ontech7
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -672,12 +692,39 @@ const styles = StyleSheet.create({
     color: colors.status.error,
   },
 
+  // About / link row
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  linkRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  linkRowText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.text.primary,
+  },
+
   // Author
   authorSection: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: spacing.md,
+    width: "100%",
+    alignItems: "center",
     marginTop: spacing.xl,
+    gap: spacing.xl,
+  },
+  authorSectionRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   authorText: {
     fontSize: 12,
