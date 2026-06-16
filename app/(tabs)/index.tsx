@@ -50,6 +50,7 @@ export default function ResourcesScreen() {
     stop,
     restart,
     deploy,
+    pullLatest,
   } = useResources();
 
   const [filter, setFilter] = useState<FilterType>("all");
@@ -105,13 +106,22 @@ export default function ResourcesScreen() {
         resource={item}
         onPress={handleResourcePress}
         onDeploy={deploy}
+        onPullLatest={pullLatest}
         onRestart={restart}
         onStart={start}
         onStop={stop}
         onViewLogs={handleViewLogs}
       />
     ),
-    [handleResourcePress, deploy, restart, start, stop, handleViewLogs],
+    [
+      handleResourcePress,
+      deploy,
+      pullLatest,
+      restart,
+      start,
+      stop,
+      handleViewLogs,
+    ],
   );
 
   const keyExtractor = useCallback((item: Resource) => item.uuid, []);
