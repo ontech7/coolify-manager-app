@@ -35,22 +35,16 @@ Follow the source-of-truth files listed above. When in doubt, match the existing
 
 ## Development Workflow
 
-1. Branch from `dev` (e.g. `feat/...`, `fix/...`).
+1. Commit directly to `dev` — no feature branches, no PRs.
 2. **Always follow the `keep-it-simple` skill** during development: YAGNI, no over-engineering, simplest solution, one component per file, no unnecessary dependencies, 60fps.
 3. Commit with Conventional Commits: `feat(scope): message`, `fix: message`, `chore:`, `docs:`, `refactor:`.
-4. No tests in this project — quality is ensured by the self-review subagent at PR time.
-5. End-of-work gates: `yarn typecheck` and `yarn lint` must pass clean.
-
-## PR Workflow
-
-When a feature/fix branch is ready, invoke the `open-pr` skill (`/open-pr`): it runs a self-review via the `pr-reviewer` subagent, fixes high/critical issues, runs typecheck + lint, writes the PR description, and opens the PR toward `dev` (squash and merge).
+4. No tests in this project.
 
 ## Release Workflow
 
-To ship `dev` to production, invoke the `release-to-production` skill (`/release-to-production`): version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR `release/x.y.z` → main titled `Release vX.Y.Z`, tag, and a reminder that the EAS build is done manually.
+To ship `dev` to production, invoke the `release-to-production` skill (`/release-to-production`): version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR `release/x.y.z` → main titled `Release vX.Y.Z` (merged with a real merge commit, not squash), tag, GitHub Release, and a reminder that the EAS build is done manually.
 
 ## Quality Gates
 
-- `yarn typecheck` — must pass.
-- `yarn lint` — must pass.
-- CI runs both on every PR (`.github/workflows/ci.yml`); branch protection on `dev` and `main` requires them.
+- CI runs `yarn typecheck` and `yarn lint` on PRs (`.github/workflows/ci.yml`).
+- Direct commits to `dev` do not require checks.
