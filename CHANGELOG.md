@@ -1,3 +1,9 @@
+## v1.3.0
+
+### Features
+- Version-aware API actions: start/stop/restart/deploy/validate now use POST on Coolify >= 4.2.0 and GET on older versions; the server version is auto-detected on connection test, with a manual `< 4.2.0` / `>= 4.2.0` selector as fallback
+- Pull latest images for services
+
 ## v1.2.0
 
 - Add unified Resources view for applications, databases and services

@@ -12,6 +12,7 @@ interface ResourceCardProps {
   resource: Resource;
   onPress: (uuid: string) => void;
   onDeploy: (uuid: string) => Promise<void>;
+  onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
   onStart: (uuid: string, type: ResourceType) => Promise<void>;
   onStop: (uuid: string, type: ResourceType) => Promise<void>;
@@ -28,6 +29,7 @@ export function ResourceCard({
   resource,
   onPress,
   onDeploy,
+  onPullLatest,
   onRestart,
   onStart,
   onStop,
@@ -71,6 +73,7 @@ export function ResourceCard({
       <ResourceActions
         resource={resource}
         onDeploy={onDeploy}
+        onPullLatest={onPullLatest}
         onRestart={onRestart}
         onStart={onStart}
         onStop={onStop}

@@ -9,17 +9,19 @@ import { Alert, Linking, StyleSheet, View } from "react-native";
 interface ResourceActionsProps {
   resource: Resource;
   onDeploy: (uuid: string) => Promise<void>;
+  onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
   onStart: (uuid: string, type: ResourceType) => Promise<void>;
   onStop: (uuid: string, type: ResourceType) => Promise<void>;
   onViewLogs: (uuid: string) => void;
 }
 
-type ActionType = "deploy" | "restart" | "start" | "stop";
+type ActionType = "deploy" | "pull" | "restart" | "start" | "stop";
 
 export function ResourceActions({
   resource,
   onDeploy,
+  onPullLatest,
   onRestart,
   onStart,
   onStop,
@@ -28,6 +30,7 @@ export function ResourceActions({
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
 
   const isApplication = resource.resourceType === "application";
+  const isService = resource.resourceType === "service";
   const isRunning = isResourceRunning(resource.status);
 
   const handleAction = useCallback(
@@ -68,6 +71,22 @@ export function ResourceActions({
       ],
     );
   }, [resource.name, resource.uuid, handleAction, onDeploy]);
+
+  const handlePullLatest = useCallback(() => {
+    triggerHaptic("warning");
+    Alert.alert(
+      "Pull Latest Images",
+      `Pull the latest images and redeploy "${resource.name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Pull",
+          onPress: () =>
+            handleAction("pull", () => onPullLatest(resource.uuid)),
+        },
+      ],
+    );
+  }, [resource.name, resource.uuid, handleAction, onPullLatest]);
 
   const handleRestart = useCallback(() => {
     triggerHaptic("warning");
@@ -121,6 +140,16 @@ export function ResourceActions({
             variant="deploy"
             onPress={handleDeploy}
             loading={loadingAction === "deploy"}
+            disabled={loadingAction !== null}
+          />
+        )}
+        {isService && (
+          <IconButton
+            name="cloud-download"
+            size={14}
+            variant="deploy"
+            onPress={handlePullLatest}
+            loading={loadingAction === "pull"}
             disabled={loadingAction !== null}
           />
         )}
