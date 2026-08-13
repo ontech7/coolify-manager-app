@@ -38,7 +38,7 @@ export function CoolifyApiProvider({ children }: { children: ReactNode }) {
     );
 
     if (active) {
-      setApi(new CoolifyAPI(active.serverUrl, active.apiToken));
+      setApi(new CoolifyAPI(active.serverUrl, active.apiToken, active.apiMode));
       setActiveInstance(active);
       setIsConfigured(true);
     } else {

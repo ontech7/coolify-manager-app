@@ -94,13 +94,28 @@ export function useConfig() {
   }, []);
 
   const testConnection = useCallback(
-    async (serverUrl: string, apiToken: string) => {
+    async (
+      serverUrl: string,
+      apiToken: string,
+    ): Promise<TestConnectionResponse> => {
       try {
         setIsTesting(true);
         setTestResult(null);
 
         const api = new CoolifyAPI(serverUrl, apiToken);
         const result = await api.testConnection();
+
+        if (result.success) {
+          const version = await api.getVersion();
+          const withVersion: TestConnectionResponse = {
+            ...result,
+            version: version ?? undefined,
+          };
+
+          setTestResult(withVersion);
+
+          return withVersion;
+        }
 
         setTestResult(result);
 
