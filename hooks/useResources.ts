@@ -161,6 +161,15 @@ export function useResources() {
     [api, fetchResources],
   );
 
+  const pullLatest = useCallback(
+    async (uuid: string) => {
+      if (!api) return;
+      await api.pullLatestImagesService(uuid);
+      await fetchResources();
+    },
+    [api, fetchResources],
+  );
+
   useEffect(() => {
     if (!isConfigured) {
       setResources([]);
@@ -221,5 +230,6 @@ export function useResources() {
     stop,
     restart,
     deploy,
+    pullLatest,
   };
 }
