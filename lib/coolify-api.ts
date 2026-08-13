@@ -244,7 +244,9 @@ export class CoolifyAPI {
   }
 
   async pullLatestImagesService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/restart?latest=true`);
+    await this.request<void>(`/services/${uuid}/restart?latest=true`, {
+      method: this.actionMethod(),
+    });
   }
 
   // Servers
