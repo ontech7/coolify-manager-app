@@ -35,4 +35,8 @@ Playbook for shipping `dev` to production.
 
 6. **Tag** — create tag `vX.Y.Z` on the merge commit.
 
-7. **EAS Build** — remind the user: the EAS build is done manually (not by this skill).
+7. **GitHub Release** — create the release on GitHub (`gh release create vX.Y.Z`):
+   - Body: a **business-like summary** first (no technical jargon — what the user gains), then the technical changelog (Features / Fixes / Misc).
+   - Attach the APK asset if available (EAS build output).
+
+8. **EAS Build** — remind the user: the EAS build is done manually (not by this skill).
