@@ -14,6 +14,8 @@ export interface ApiError {
 export interface TestConnectionResponse {
   success: boolean;
   error?: string;
+  /** Detected Coolify server version (e.g. "4.2.0"), when available. */
+  version?: string;
 }
 
 // Deploy

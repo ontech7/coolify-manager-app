@@ -2,16 +2,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
-import { GITHUB_REPO_URL } from "@/constants";
+import { GITHUB_REPO_URL, POST_ACTIONS_MIN_VERSION } from "@/constants";
 import { useConfig } from "@/hooks/useConfig";
 import { triggerHaptic } from "@/hooks/useHaptics";
 import { colors, radius, spacing } from "@/theme";
-import type { CoolifyInstance } from "@/types/config";
+import type { ApiMode, CoolifyInstance } from "@/types/config";
 import {
   validateApiToken,
   validateInstanceName,
   validateServerUrl,
 } from "@/utils/validation";
+import { isVersionAtLeast } from "@/utils/version";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -57,6 +58,7 @@ export default function SettingsScreen() {
   const [name, setName] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [apiToken, setApiToken] = useState("");
+  const [apiMode, setApiMode] = useState<ApiMode>("current");
 
   const [nameError, setNameError] = useState<string | null>(null);
   const [serverUrlError, setServerUrlError] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export default function SettingsScreen() {
     setName("");
     setServerUrl("");
     setApiToken("");
+    setApiMode("current");
     setNameError(null);
     setServerUrlError(null);
     setApiTokenError(null);
@@ -95,6 +98,7 @@ export default function SettingsScreen() {
       setName(instance.name);
       setServerUrl(instance.serverUrl);
       setApiToken(instance.apiToken);
+      setApiMode(instance.apiMode ?? "current");
       setFormMode({ type: "edit", instance });
     },
     [resetForm],
@@ -153,7 +157,18 @@ export default function SettingsScreen() {
 
   const handleTestConnection = useCallback(async () => {
     if (!validateForm()) return;
-    await testConnection(serverUrl, apiToken);
+    const result = await testConnection(serverUrl, apiToken);
+
+    if (result.success && result.version) {
+      const atLeast = isVersionAtLeast(
+        result.version,
+        POST_ACTIONS_MIN_VERSION,
+      );
+
+      if (atLeast !== null) {
+        setApiMode(atLeast ? "current" : "legacy");
+      }
+    }
   }, [validateForm, testConnection, serverUrl, apiToken]);
 
   const handleSave = useCallback(async () => {
@@ -164,6 +179,7 @@ export default function SettingsScreen() {
         name: name.trim(),
         serverUrl: serverUrl.trim(),
         apiToken: apiToken.trim(),
+        apiMode,
       });
     } else if (formMode.type === "edit") {
       await updateInstance({
@@ -171,6 +187,7 @@ export default function SettingsScreen() {
         name: name.trim(),
         serverUrl: serverUrl.trim(),
         apiToken: apiToken.trim(),
+        apiMode,
       });
     }
 
@@ -189,6 +206,7 @@ export default function SettingsScreen() {
     name,
     serverUrl,
     apiToken,
+    apiMode,
     resetForm,
   ]);
 
@@ -371,6 +389,39 @@ export default function SettingsScreen() {
               containerStyle={styles.inputSpacing}
             />
 
+            <View style={styles.modeSelector}>
+              <Text style={styles.modeSelectorLabel}>Coolify Version</Text>
+              <View style={styles.modeSelectorOptions}>
+                <Pressable
+                  style={[
+                    styles.modeSelectorOption,
+                    apiMode === "legacy" && styles.modeSelectorOptionActive,
+                  ]}
+                  onPress={() => setApiMode("legacy")}
+                >
+                  <Text style={styles.modeSelectorOptionText}>
+                    {`< ${POST_ACTIONS_MIN_VERSION}`}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.modeSelectorOption,
+                    apiMode === "current" && styles.modeSelectorOptionActive,
+                  ]}
+                  onPress={() => setApiMode("current")}
+                >
+                  <Text style={styles.modeSelectorOptionText}>
+                    {`>= ${POST_ACTIONS_MIN_VERSION}`}
+                  </Text>
+                </Pressable>
+              </View>
+              <Text style={styles.modeSelectorHint}>
+                {testResult?.success && !testResult.version
+                  ? "Could not detect the version automatically — select it manually."
+                  : `Auto-detected on test. < ${POST_ACTIONS_MIN_VERSION} uses GET, >= ${POST_ACTIONS_MIN_VERSION} uses POST.`}
+              </Text>
+            </View>
+
             <View style={styles.helpBox}>
               <Text style={styles.helpBoxTitle}>
                 How to generate the token:
@@ -477,7 +528,11 @@ export default function SettingsScreen() {
                   ]}
                 >
                   {testResult.success
-                    ? "✓ Connection successful!"
+                    ? `✓ Connection successful!${
+                        testResult.version
+                          ? ` (Coolify v${testResult.version})`
+                          : ""
+                      }`
                     : `✗ ${testResult.error || "Connection failed"}`}
                 </Text>
               </View>
@@ -619,6 +674,41 @@ const styles = StyleSheet.create({
   // Form
   inputSpacing: {
     marginTop: spacing.lg,
+  },
+  modeSelector: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  modeSelectorLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: colors.text.secondary,
+  },
+  modeSelectorOptions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  modeSelectorOption: {
+    flex: 1,
+    paddingVertical: spacing.lg,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface.default,
+  },
+  modeSelectorOptionActive: {
+    borderColor: colors.primary.default,
+    backgroundColor: colors.primary.default,
+  },
+  modeSelectorOptionText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: colors.text.primary,
+  },
+  modeSelectorHint: {
+    fontSize: 11,
+    color: colors.text.muted,
   },
   helpBox: {
     backgroundColor: colors.surface.hover,

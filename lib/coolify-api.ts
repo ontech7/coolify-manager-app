@@ -9,6 +9,7 @@ import type {
   ServerResponse,
   ServiceResponse,
 } from "@/types/api";
+import type { ApiMode } from "@/types/config";
 
 interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -21,10 +22,44 @@ interface RequestOptions extends RequestInit {
 export class CoolifyAPI {
   private baseUrl: string;
   private token: string;
+  private apiMode: ApiMode;
 
-  constructor(baseUrl: string, token: string) {
+  constructor(baseUrl: string, token: string, apiMode: ApiMode = "current") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.token = token;
+    this.apiMode = apiMode;
+  }
+
+  /**
+   * HTTP method for state-changing actions. Coolify >= 4.2.0 requires POST;
+   * older versions use GET.
+   */
+  private actionMethod(): "GET" | "POST" {
+    return this.apiMode === "legacy" ? "GET" : "POST";
+  }
+
+  /**
+   * Detect the Coolify server version (e.g. "4.2.0"). Returns null when the
+   * version endpoint is unavailable (e.g. token without read permission).
+   */
+  async getVersion(): Promise<string | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/version`, {
+        headers: this.headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) return null;
+
+      return (await response.text()).replace(/^v/i, "").trim();
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private get headers(): Record<string, string> {
@@ -108,19 +143,32 @@ export class CoolifyAPI {
   }
 
   async startApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/start`);
+    await this.request<void>(`/applications/${uuid}/start`, {
+      method: this.actionMethod(),
+    });
   }
 
   async stopApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/stop`);
+    await this.request<void>(`/applications/${uuid}/stop`, {
+      method: this.actionMethod(),
+    });
   }
 
   async restartApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/restart`);
+    await this.request<void>(`/applications/${uuid}/restart`, {
+      method: this.actionMethod(),
+    });
   }
 
   async deployApplication(uuid: string) {
-    return this.request<DeployResponse>(`/deploy?uuid=${uuid}`);
+    if (this.apiMode === "legacy") {
+      return this.request<DeployResponse>(`/deploy?uuid=${uuid}`);
+    }
+
+    return this.request<DeployResponse>("/deploy", {
+      method: "POST",
+      body: JSON.stringify({ uuid }),
+    });
   }
 
   async getApplicationLogs(uuid: string, lines: number = 100) {
@@ -154,15 +202,21 @@ export class CoolifyAPI {
   }
 
   async startDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/start`);
+    await this.request<void>(`/databases/${uuid}/start`, {
+      method: this.actionMethod(),
+    });
   }
 
   async stopDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/stop`);
+    await this.request<void>(`/databases/${uuid}/stop`, {
+      method: this.actionMethod(),
+    });
   }
 
   async restartDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/restart`);
+    await this.request<void>(`/databases/${uuid}/restart`, {
+      method: this.actionMethod(),
+    });
   }
 
   // Services
@@ -172,15 +226,21 @@ export class CoolifyAPI {
   }
 
   async startService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/start`);
+    await this.request<void>(`/services/${uuid}/start`, {
+      method: this.actionMethod(),
+    });
   }
 
   async stopService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/stop`);
+    await this.request<void>(`/services/${uuid}/stop`, {
+      method: this.actionMethod(),
+    });
   }
 
   async restartService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/restart`);
+    await this.request<void>(`/services/${uuid}/restart`, {
+      method: this.actionMethod(),
+    });
   }
 
   // Servers
@@ -198,6 +258,8 @@ export class CoolifyAPI {
   }
 
   async validateServer(uuid: string) {
-    await this.request<void>(`/servers/${uuid}/validate`);
+    await this.request<void>(`/servers/${uuid}/validate`, {
+      method: this.actionMethod(),
+    });
   }
 }

@@ -58,6 +58,7 @@ async function migrateLegacyConfig() {
     name: new URL(legacyUrl).host,
     serverUrl: legacyUrl,
     apiToken: legacyToken,
+    apiMode: "current",
   };
 
   await saveInstances([instance]);

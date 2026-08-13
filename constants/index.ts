@@ -9,3 +9,9 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const GITHUB_REPO_URL = "https://github.com/ontech7/coolify-manager-app";
+
+/**
+ * Coolify version that switched state-changing API actions (start/stop/restart/
+ * deploy/validate) from GET to POST. Servers >= this version require POST.
+ */
+export const POST_ACTIONS_MIN_VERSION = "4.2.0";
