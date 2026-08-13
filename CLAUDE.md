@@ -47,7 +47,7 @@ When a feature/fix branch is ready, invoke the `open-pr` skill (`/open-pr`): it 
 
 ## Release Workflow
 
-To ship `dev` to production, invoke the `release-to-production` skill (`/release-to-production`): version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR `dev → main` titled `Release vX.Y.Z`, tag, and a reminder that the EAS build is done manually.
+To ship `dev` to production, invoke the `release-to-production` skill (`/release-to-production`): version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR `release/x.y.z` → main titled `Release vX.Y.Z`, tag, and a reminder that the EAS build is done manually.
 
 ## Quality Gates
 

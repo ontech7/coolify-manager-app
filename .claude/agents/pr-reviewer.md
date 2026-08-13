@@ -35,3 +35,4 @@ Only critical and high findings block the PR. Medium/low are reported but non-bl
 - Verify claims against the actual code — don't guess.
 - If a finding is debatable, mark it as such.
 - Do not modify any files. Report only.
+- Bash is only for read-only git commands (git diff, git log, git show).

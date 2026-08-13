@@ -1,6 +1,6 @@
 ---
 name: release-to-production
-description: Release dev to production. Version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR dev → main titled "Release vX.Y.Z", tag, EAS build reminder. Use when dev is ready to ship, or when the user says "release", "facciamo una release", "release to production", or similar.
+description: Release dev to production. Version bump (major/minor/bugfix, recommended), CHANGELOG update, release branch, PR release/x.y.z → main titled "Release vX.Y.Z", tag, EAS build reminder. Use when dev is ready to ship, or when the user says "release", "facciamo una release", "release to production", or similar.
 ---
 
 # Release to Production
@@ -22,9 +22,9 @@ Playbook for shipping `dev` to production.
      - Any **Notes** if needed.
 
 3. **Release branch**
-   - Create `release/x.y.z` from `dev`.
+   - Create `release/x.y.z` from `dev`. The version-bump and changelog commits land on this branch.
 
-4. **PR dev → main**
+4. **PR `release/x.y.z` → main**
    - Title: `Release vX.Y.Z`.
    - Body in English:
      - **Summary**: business-like, no technical jargon — what the user gains.
