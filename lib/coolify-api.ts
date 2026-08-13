@@ -43,22 +43,22 @@ export class CoolifyAPI {
    * version endpoint is unavailable (e.g. token without read permission).
    */
   async getVersion(): Promise<string | null> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    try {
       const response = await fetch(`${this.baseUrl}/api/v1/version`, {
         headers: this.headers,
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) return null;
 
       return (await response.text()).replace(/^v/i, "").trim();
     } catch {
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

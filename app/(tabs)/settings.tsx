@@ -160,11 +160,14 @@ export default function SettingsScreen() {
     const result = await testConnection(serverUrl, apiToken);
 
     if (result.success && result.version) {
-      setApiMode(
-        isVersionAtLeast(result.version, POST_ACTIONS_MIN_VERSION)
-          ? "current"
-          : "legacy",
+      const atLeast = isVersionAtLeast(
+        result.version,
+        POST_ACTIONS_MIN_VERSION,
       );
+
+      if (atLeast !== null) {
+        setApiMode(atLeast ? "current" : "legacy");
+      }
     }
   }, [validateForm, testConnection, serverUrl, apiToken]);
 
@@ -413,7 +416,9 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
               <Text style={styles.modeSelectorHint}>
-                {`Auto-detected on test. < ${POST_ACTIONS_MIN_VERSION} uses GET, >= ${POST_ACTIONS_MIN_VERSION} uses POST.`}
+                {testResult?.success && !testResult.version
+                  ? "Could not detect the version automatically — select it manually."
+                  : `Auto-detected on test. < ${POST_ACTIONS_MIN_VERSION} uses GET, >= ${POST_ACTIONS_MIN_VERSION} uses POST.`}
               </Text>
             </View>
 
