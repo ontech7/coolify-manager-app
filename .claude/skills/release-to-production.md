@@ -22,7 +22,7 @@ Playbook for shipping `dev` to production.
      - Any **Notes** if needed.
 
 3. **Release branch**
-   - Create `release/x.y.z` from `dev`. The version-bump and changelog commits land on this branch.
+   - Create `release/x.y.z` from `dev`. The version-bump and changelog commits (steps 1–2) are included in this branch.
 
 4. **PR `release/x.y.z` → main**
    - Title: `Release vX.Y.Z`.
