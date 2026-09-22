@@ -20,26 +20,6 @@ export function formatDateTime(dateString: string): string {
   }
 }
 
-// Format a date string to date only (e.g., "Jan 15, 2024")
-export function formatDate(dateString: string): string {
-  try {
-    const date = parseISO(dateString);
-    return format(date, "MMM d, yyyy");
-  } catch {
-    return "Unknown";
-  }
-}
-
-// Format a date string to time only (e.g., "14:30")
-export function formatTime(dateString: string): string {
-  try {
-    const date = parseISO(dateString);
-    return format(date, "HH:mm");
-  } catch {
-    return "Unknown";
-  }
-}
-
 // Docker prints dates as "2025-01-15 10:30:00 +0000 UTC". Returns relative
 // time (e.g., "3 days ago"), or the raw value when it isn't in that format.
 export function formatDockerDate(raw: string | null | undefined): string {

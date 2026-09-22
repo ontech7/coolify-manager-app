@@ -53,10 +53,6 @@ export function getResourceStatus(rawStatus?: string): ApplicationStatus {
   return "unknown";
 }
 
-export function isApplicationRunning(app: ApplicationResponse) {
-  return isResourceRunning(app.status);
-}
-
 export function isResourceRunning(rawStatus?: string) {
   return (rawStatus?.toLowerCase() ?? "").includes("running");
 }

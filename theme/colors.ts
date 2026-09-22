@@ -1,8 +1,6 @@
 export const colors = {
   background: {
     primary: "#1a1a2e",
-    secondary: "#16213e",
-    gradient: ["#1a1a2e", "#16213e"] as const,
     /** Floating surfaces drawn above content (tab bar). */
     elevated: "rgba(34, 34, 62, 0.96)",
   },
@@ -30,7 +28,6 @@ export const colors = {
     warning: "#fbbf24",
     warningBg: "rgba(234, 179, 8, 0.2)",
     info: "#60a5fa",
-    infoBg: "rgba(59, 130, 246, 0.2)",
   },
   text: {
     primary: "#ffffff",
@@ -49,5 +46,3 @@ export const colors = {
     stopBg: "rgba(248, 113, 113, 0.2)",
   },
 } as const;
-
-export type Colors = typeof colors;

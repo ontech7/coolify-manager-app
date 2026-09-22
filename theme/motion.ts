@@ -20,5 +20,3 @@ export const motion = {
   },
   pressScale: 0.98,
 } as const;
-
-export type Motion = typeof motion;

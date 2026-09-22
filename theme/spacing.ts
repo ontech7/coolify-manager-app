@@ -8,5 +8,3 @@ export const spacing = {
   "3xl": 24,
   "4xl": 40,
 } as const;
-
-export type Spacing = typeof spacing;

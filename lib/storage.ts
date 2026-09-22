@@ -81,13 +81,6 @@ export async function getConfig() {
   return { instances, activeInstanceId } as AppConfig;
 }
 
-export async function saveConfig(config: AppConfig) {
-  await Promise.all([
-    saveInstances(config.instances),
-    setActiveInstanceId(config.activeInstanceId),
-  ]);
-}
-
 export async function addInstance(instance: Omit<CoolifyInstance, "id">) {
   const instances = await getInstances();
 
@@ -129,11 +122,4 @@ export async function removeInstance(id: string) {
 
 export async function switchActiveInstance(id: string) {
   await setActiveInstanceId(id);
-}
-
-export async function clearConfig() {
-  await Promise.all([
-    SecureStore.deleteItemAsync(STORAGE_KEYS.INSTANCES),
-    SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_INSTANCE_ID),
-  ]);
 }
