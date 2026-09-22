@@ -3,13 +3,18 @@ export const colors = {
     primary: "#1a1a2e",
     secondary: "#16213e",
     gradient: ["#1a1a2e", "#16213e"] as const,
+    /** Floating surfaces drawn above content (tab bar). */
+    elevated: "rgba(34, 34, 62, 0.96)",
   },
   primary: {
     default: "#6366f1",
     hover: "#4f46e5",
     light: "#a5b4fc",
     background: "rgba(99, 102, 241, 0.2)",
+    border: "rgba(165, 180, 252, 0.18)",
+    glow: "rgba(99, 102, 241, 0.18)",
   },
+  shadow: "rgba(0, 0, 0, 0.45)",
   surface: {
     default: "rgba(255, 255, 255, 0.05)",
     hover: "rgba(255, 255, 255, 0.1)",

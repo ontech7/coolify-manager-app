@@ -12,6 +12,7 @@ import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useDeployments } from "@/hooks/useDeployments";
 import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback } from "react";
@@ -19,6 +20,8 @@ import { RefreshControl, StyleSheet, View } from "react-native";
 
 export default function DeploymentsScreen() {
   const router = useRouter();
+  // The floating tab bar overlays the bottom of the screen.
+  const tabBarHeight = useBottomTabBarHeight();
   const {
     deployments,
     isLoading,
@@ -111,7 +114,9 @@ export default function DeploymentsScreen() {
     return (
       <View style={styles.container}>
         {header}
-        <ErrorState message={error} onRetry={refresh} />
+        <View style={[styles.fill, { paddingBottom: tabBarHeight }]}>
+          <ErrorState message={error} onRetry={refresh} />
+        </View>
       </View>
     );
   }
@@ -126,6 +131,7 @@ export default function DeploymentsScreen() {
         keyExtractor={keyExtractor}
         contentContainerStyle={[
           styles.list,
+          { paddingBottom: tabBarHeight + spacing.xl },
           deployments.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={renderEmpty}
@@ -150,6 +156,9 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.xl,
+  },
+  fill: {
+    flex: 1,
   },
   emptyList: {
     flex: 1,

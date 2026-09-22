@@ -14,6 +14,7 @@ import {
 } from "@/utils/validation";
 import { isVersionAtLeast } from "@/utils/version";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -37,6 +38,8 @@ type FormMode =
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The floating tab bar overlays the bottom of the screen.
+  const tabBarHeight = useBottomTabBarHeight();
 
   const {
     instances,
@@ -257,7 +260,7 @@ export default function SettingsScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.xl,
-            paddingBottom: insets.bottom + spacing.xl,
+            paddingBottom: tabBarHeight + spacing.xl,
           },
         ]}
         keyboardShouldPersistTaps="handled"

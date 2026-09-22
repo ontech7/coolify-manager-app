@@ -1,8 +1,8 @@
 import { Text } from "@/components/ui/text";
-import { colors, motion, spacing } from "@/theme";
+import { colors, motion } from "@/theme";
 import type { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 import { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -10,11 +10,10 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-/** Size of the active pill; the tab bar draws it behind the focused icon. */
-export const TAB_INDICATOR_WIDTH = 56;
-export const TAB_INDICATOR_HEIGHT = 28;
+/** Height of an item; the tab bar's active pill has the same height. */
+export const TAB_ITEM_HEIGHT = 46;
 
-const ICON_SIZE = 22;
+const ICON_SIZE = 20;
 
 interface TabBarItemProps {
   label: string;
@@ -38,10 +37,11 @@ export function TabBarItem({
   }, [focused, progress]);
 
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.1]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.08]) }],
   }));
 
-  const color = focused ? colors.primary.light : colors.text.muted;
+  // White on the solid pill, muted elsewhere.
+  const color = focused ? colors.text.primary : colors.text.muted;
 
   return (
     <Pressable
@@ -52,11 +52,9 @@ export function TabBarItem({
       accessibilityState={{ selected: focused }}
       accessibilityLabel={label}
     >
-      <View style={styles.iconSlot}>
-        <Animated.View style={iconStyle}>
-          {icon?.({ focused, color, size: ICON_SIZE })}
-        </Animated.View>
-      </View>
+      <Animated.View style={iconStyle}>
+        {icon?.({ focused, color, size: ICON_SIZE })}
+      </Animated.View>
       <Text
         style={[styles.label, { color }, focused && styles.labelFocused]}
         numberOfLines={1}
@@ -70,19 +68,14 @@ export function TabBarItem({
 const styles = StyleSheet.create({
   item: {
     flex: 1,
-    alignItems: "center",
-    gap: 2,
-  },
-  iconSlot: {
-    width: TAB_INDICATOR_WIDTH,
-    height: TAB_INDICATOR_HEIGHT,
+    height: TAB_ITEM_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
+    gap: 2,
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "500",
-    paddingHorizontal: spacing.xs,
   },
   labelFocused: {
     fontWeight: "600",

@@ -16,6 +16,7 @@ import { useResources } from "@/hooks/useResources";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, motion, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -35,6 +36,8 @@ const toolbarEntering = FadeIn.duration(motion.duration.normal);
 
 export default function ResourcesScreen() {
   const router = useRouter();
+  // The floating tab bar overlays the bottom of the screen.
+  const tabBarHeight = useBottomTabBarHeight();
   const { activeInstance } = useCoolifyApi();
   // Database and service logs were added to the API in Coolify 4.2.0.
   const supportsResourceLogs = activeInstance?.apiMode !== "legacy";
@@ -227,7 +230,9 @@ export default function ResourcesScreen() {
     return (
       <View style={styles.container}>
         {header}
-        <ErrorState message={error} onRetry={refresh} />
+        <View style={[styles.fill, { paddingBottom: tabBarHeight }]}>
+          <ErrorState message={error} onRetry={refresh} />
+        </View>
       </View>
     );
   }
@@ -303,6 +308,7 @@ export default function ResourcesScreen() {
         getItemType={getItemType}
         contentContainerStyle={[
           styles.list,
+          { paddingBottom: tabBarHeight + spacing.xl },
           filtered.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={renderEmpty}
@@ -366,6 +372,9 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.xl,
     paddingTop: spacing.md,
+  },
+  fill: {
+    flex: 1,
   },
   emptyList: {
     flex: 1,

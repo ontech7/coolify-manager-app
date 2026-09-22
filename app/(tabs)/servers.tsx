@@ -11,6 +11,7 @@ import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useServers } from "@/hooks/useServers";
 import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useMemo } from "react";
@@ -18,6 +19,8 @@ import { RefreshControl, StyleSheet, View } from "react-native";
 
 export default function ServersScreen() {
   const router = useRouter();
+  // The floating tab bar overlays the bottom of the screen.
+  const tabBarHeight = useBottomTabBarHeight();
   const {
     servers,
     isLoading,
@@ -102,7 +105,9 @@ export default function ServersScreen() {
     return (
       <View style={styles.container}>
         {header}
-        <ErrorState message={error} onRetry={refresh} />
+        <View style={[styles.fill, { paddingBottom: tabBarHeight }]}>
+          <ErrorState message={error} onRetry={refresh} />
+        </View>
       </View>
     );
   }
@@ -117,6 +122,7 @@ export default function ServersScreen() {
         keyExtractor={keyExtractor}
         contentContainerStyle={[
           styles.list,
+          { paddingBottom: tabBarHeight + spacing.xl },
           servers.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={renderEmpty}
@@ -141,6 +147,9 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.xl,
+  },
+  fill: {
+    flex: 1,
   },
   emptyList: {
     flex: 1,
