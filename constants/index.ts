@@ -5,6 +5,12 @@ export const LIVE_DEPLOYMENT_REFRESH_INTERVAL = 3000; // 3 seconds
 
 export const LOG_LINES = 500;
 
+/**
+ * Distance from the bottom (px) within which a live log view keeps following
+ * new lines. Scrolling further up pauses following so the user can read.
+ */
+export const SCROLL_FOLLOW_THRESHOLD = 80;
+
 export const STORAGE_KEYS = {
   INSTANCES: "coolify_instances",
   ACTIVE_INSTANCE_ID: "coolify_active_instance_id",

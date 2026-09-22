@@ -10,6 +10,7 @@ import { ResourceActions } from "./resource-actions";
 
 interface ResourceCardProps {
   resource: Resource;
+  supportsResourceLogs: boolean;
   onPress: (uuid: string) => void;
   onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
@@ -28,6 +29,7 @@ const typeChip: Record<ResourceType, { label: string; color: string }> = {
 
 export function ResourceCard({
   resource,
+  supportsResourceLogs,
   onPress,
   onDeploy,
   onPullLatest,
@@ -70,6 +72,7 @@ export function ResourceCard({
 
       <ResourceActions
         resource={resource}
+        supportsResourceLogs={supportsResourceLogs}
         onDeploy={onDeploy}
         onPullLatest={onPullLatest}
         onRestart={onRestart}

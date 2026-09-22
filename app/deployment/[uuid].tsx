@@ -4,7 +4,10 @@ import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
-import { LIVE_DEPLOYMENT_REFRESH_INTERVAL } from "@/constants";
+import {
+  LIVE_DEPLOYMENT_REFRESH_INTERVAL,
+  SCROLL_FOLLOW_THRESHOLD,
+} from "@/constants";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { triggerHaptic } from "@/hooks/useHaptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
@@ -27,9 +30,6 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-/** Distance from the bottom (px) within which the view keeps following logs. */
-const FOLLOW_THRESHOLD = 80;
 
 /**
  * Coolify stores deployment logs as a JSON-encoded array of entries
@@ -71,6 +71,9 @@ export default function DeploymentDetails() {
   const scrollViewRef = useRef<ScrollView>(null);
   // Follow new log lines only while the user is at the bottom of the page.
   const isFollowingRef = useRef(true);
+  // Set once the deployment was seen running, so the lines that arrive with
+  // the final status are still scrolled into view.
+  const wasLiveRef = useRef(false);
 
   /** Silent by default: used by live polling without flashing a spinner. */
   const fetchDeployment = useCallback(
@@ -90,9 +93,12 @@ export default function DeploymentDetails() {
         setDeployment(dep);
         setError(null);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load deployment",
-        );
+        const message =
+          err instanceof Error ? err.message : "Failed to load deployment";
+        setError(message);
+        // Once loaded, the screen keeps the last state: tell the user why a
+        // manual refresh didn't change anything.
+        if (showRefreshing) Alert.alert("Error", message);
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -108,6 +114,10 @@ export default function DeploymentDetails() {
   }, [api, fetchDeployment]);
 
   const isActive = isDeploymentActive(deployment?.status);
+
+  useEffect(() => {
+    if (isActive) wasLiveRef.current = true;
+  }, [isActive]);
 
   // Watch the build live while it's queued or running.
   useAutoRefresh(fetchDeployment, isActive, LIVE_DEPLOYMENT_REFRESH_INTERVAL);
@@ -159,13 +169,13 @@ export default function DeploymentDetails() {
         event.nativeEvent;
       isFollowingRef.current =
         layoutMeasurement.height + contentOffset.y >=
-        contentSize.height - FOLLOW_THRESHOLD;
+        contentSize.height - SCROLL_FOLLOW_THRESHOLD;
     },
     [],
   );
 
   const handleContentSizeChange = useCallback(() => {
-    if (isActive && isFollowingRef.current) {
+    if ((isActive || wasLiveRef.current) && isFollowingRef.current) {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   }, [isActive]);

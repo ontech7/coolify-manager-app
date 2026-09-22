@@ -1,6 +1,5 @@
 import { IconButton } from "@/components/ui/icon-button";
 import { triggerHaptic } from "@/hooks/useHaptics";
-import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { isResourceRunning } from "@/utils/status";
@@ -9,6 +8,8 @@ import { Alert, Linking, StyleSheet, View } from "react-native";
 
 interface ResourceActionsProps {
   resource: Resource;
+  /** Database/service logs need Coolify >= 4.2.0; app logs always work. */
+  supportsResourceLogs: boolean;
   /** Resolves with the queued deployment's UUID, when Coolify returns one. */
   onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
@@ -23,6 +24,7 @@ type ActionType = "deploy" | "pull" | "restart" | "start" | "stop";
 
 export function ResourceActions({
   resource,
+  supportsResourceLogs,
   onDeploy,
   onPullLatest,
   onRestart,
@@ -31,14 +33,12 @@ export function ResourceActions({
   onViewLogs,
   onOpenDeployment,
 }: ResourceActionsProps) {
-  const { activeInstance } = useCoolifyApi();
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
 
   const isApplication = resource.resourceType === "application";
   const isService = resource.resourceType === "service";
   const isRunning = isResourceRunning(resource.status);
-  // Database and service logs were added to the API in Coolify 4.2.0.
-  const canViewLogs = isApplication || activeInstance?.apiMode !== "legacy";
+  const canViewLogs = isApplication || supportsResourceLogs;
 
   const handleAction = useCallback(
     async <T,>(

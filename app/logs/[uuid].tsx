@@ -2,14 +2,21 @@ import { AutoRefreshButton } from "@/components/ui/auto-refresh-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
-import { LOG_LINES } from "@/constants";
+import { LOG_LINES, SCROLL_FOLLOW_THRESHOLD } from "@/constants";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { ResourceType, ServiceContainer } from "@/types/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
@@ -32,37 +39,44 @@ export default function LogsViewerModal() {
 
   const [logs, setLogs] = useState("");
   const [containers, setContainers] = useState<ServiceContainer[]>([]);
-  const [container, setContainer] = useState<string | null>(null);
+  const [container, setContainer] = useState<ServiceContainer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveTail, setLiveTail] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
+  // Follow new lines only while the user is at the bottom of the logs.
+  const isFollowingRef = useRef(true);
+  // Only the latest request may update the screen: switching container while
+  // a request is in flight must not show the previous container's logs.
+  const requestIdRef = useRef(0);
 
   // A service is a group of containers: load them first, logs are per container.
-  useEffect(() => {
+  const loadContainers = useCallback(async () => {
     if (type !== "service" || !api || !uuid) return;
 
-    api
-      .getService(uuid)
-      .then((service) => {
-        const list = [
-          ...(service.applications ?? []),
-          ...(service.databases ?? []),
-        ];
-        setContainers(list);
-        setContainer(list[0]?.name ?? null);
-        if (list.length === 0) {
-          setError("This service has no containers.");
-          setIsLoading(false);
-        }
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load service");
+    try {
+      const service = await api.getService(uuid);
+      const list = [
+        ...(service.applications ?? []),
+        ...(service.databases ?? []),
+      ];
+      setContainers(list);
+      setContainer(list[0] ?? null);
+      if (list.length === 0) {
+        setError("This service has no containers.");
         setIsLoading(false);
-      });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load service");
+      setIsLoading(false);
+    }
   }, [type, api, uuid]);
+
+  useEffect(() => {
+    loadContainers();
+  }, [loadContainers]);
 
   const fetchLogs = useCallback(
     async (showRefreshing = false) => {
@@ -74,6 +88,7 @@ export default function LogsViewerModal() {
       }
       if (type === "service" && !container) return;
 
+      const requestId = ++requestIdRef.current;
       if (showRefreshing) setIsRefreshing(true);
 
       try {
@@ -81,20 +96,20 @@ export default function LogsViewerModal() {
           type === "database"
             ? await api.getDatabaseLogs(uuid, LOG_LINES)
             : type === "service" && container
-              ? await api.getServiceLogs(uuid, container, LOG_LINES)
+              ? await api.getServiceLogs(uuid, container.name, LOG_LINES)
               : await api.getApplicationLogs(uuid, LOG_LINES);
 
+        if (requestId !== requestIdRef.current) return;
         setLogs(result.logs || "No logs available");
         setError(null);
-
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: false });
-        }, 100);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to load logs");
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [uuid, api, isConfigured, type, container],
@@ -104,28 +119,59 @@ export default function LogsViewerModal() {
     fetchLogs();
   }, [fetchLogs]);
 
-  useAutoRefresh(fetchLogs, liveTail && !error);
+  // Keeps polling after a failed tick, so live tail recovers on its own.
+  useAutoRefresh(fetchLogs, liveTail);
 
   const handleClose = useCallback(() => {
     router.back();
   }, [router]);
 
   const handleRefresh = useCallback(() => {
-    fetchLogs(true);
-  }, [fetchLogs]);
+    if (type === "service" && !container) {
+      setError(null);
+      setIsLoading(true);
+      loadContainers();
+    } else {
+      fetchLogs(true);
+    }
+  }, [type, container, loadContainers, fetchLogs]);
 
   const handleToggleLiveTail = useCallback(() => {
     setLiveTail((prev) => !prev);
   }, []);
 
-  const handleSelectContainer = useCallback((containerName: string) => {
-    setContainer(containerName);
-    setLogs("");
-    setIsLoading(true);
-  }, []);
+  const handleSelectContainer = useCallback(
+    (item: ServiceContainer) => {
+      if (item.uuid === container?.uuid) return;
+      isFollowingRef.current = true;
+      setContainer(item);
+      setLogs("");
+      setError(null);
+      setIsLoading(true);
+    },
+    [container],
+  );
 
   const handleScrollToBottom = useCallback(() => {
+    isFollowingRef.current = true;
     scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } =
+        event.nativeEvent;
+      isFollowingRef.current =
+        layoutMeasurement.height + contentOffset.y >=
+        contentSize.height - SCROLL_FOLLOW_THRESHOLD;
+    },
+    [],
+  );
+
+  const handleContentSizeChange = useCallback(() => {
+    if (isFollowingRef.current) {
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }
   }, []);
 
   return (
@@ -158,12 +204,12 @@ export default function LogsViewerModal() {
           showsHorizontalScrollIndicator={false}
         >
           {containers.map((item) => {
-            const active = item.name === container;
+            const active = item.uuid === container?.uuid;
             return (
               <Pressable
                 key={item.uuid}
                 style={[styles.chip, active && styles.chipActive]}
-                onPress={() => handleSelectContainer(item.name)}
+                onPress={() => handleSelectContainer(item)}
               >
                 <Text
                   style={[styles.chipText, active && styles.chipTextActive]}
@@ -178,7 +224,7 @@ export default function LogsViewerModal() {
 
       {isLoading ? (
         <LoadingSpinner message="Loading logs..." />
-      ) : error ? (
+      ) : error && !logs ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
@@ -190,7 +236,11 @@ export default function LogsViewerModal() {
             styles.logsContent,
             { paddingBottom: insets.bottom + spacing["4xl"] },
           ]}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
+          onContentSizeChange={handleContentSizeChange}
         >
+          {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
           <Text style={styles.logsText} selectable>
             {logs}
           </Text>
@@ -286,6 +336,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.status.error,
     textAlign: "center",
+  },
+  errorBanner: {
+    fontSize: 12,
+    color: colors.status.error,
+    backgroundColor: colors.status.errorBg,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   footer: {
     position: "absolute",

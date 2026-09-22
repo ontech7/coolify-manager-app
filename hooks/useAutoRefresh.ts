@@ -10,8 +10,9 @@ import { AppState } from "react-native";
  * When the screen becomes visible again after a pause, it refreshes right
  * away instead of showing stale data until the next tick.
  *
- * Each tick waits for the previous request to finish, so a slow server never
- * gets overlapping requests.
+ * The next tick is scheduled only after the previous request finishes, so a
+ * slow server doesn't pile up requests. `refresh` should handle its own
+ * errors; a rejection is swallowed so polling keeps going.
  */
 export function useAutoRefresh(
   refresh: () => Promise<unknown>,
@@ -48,6 +49,8 @@ export function useAutoRefresh(
     const tick = async () => {
       try {
         await refresh();
+      } catch {
+        // The caller surfaces errors; keep polling.
       } finally {
         if (!cancelled) {
           timer = setTimeout(tick, interval);

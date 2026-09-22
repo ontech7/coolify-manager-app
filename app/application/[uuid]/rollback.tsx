@@ -45,7 +45,13 @@ export default function RollbackModal() {
   const [rollingBackTag, setRollingBackTag] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!api || !uuid) return;
+    if (!api || !uuid) {
+      setError("Not configured");
+      setIsLoading(false);
+      return;
+    }
+    setError(null);
+    setIsLoading(true);
 
     api
       .getRollbackImages(uuid)

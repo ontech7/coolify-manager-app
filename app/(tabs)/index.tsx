@@ -13,6 +13,7 @@ import { SkeletonList } from "@/components/ui/skeleton-list";
 import { StaggeredItem } from "@/components/ui/staggered-item";
 import { Text } from "@/components/ui/text";
 import { useResources } from "@/hooks/useResources";
+import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, motion, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { FlashList } from "@shopify/flash-list";
@@ -34,6 +35,9 @@ const toolbarEntering = FadeIn.duration(motion.duration.normal);
 
 export default function ResourcesScreen() {
   const router = useRouter();
+  const { activeInstance } = useCoolifyApi();
+  // Database and service logs were added to the API in Coolify 4.2.0.
+  const supportsResourceLogs = activeInstance?.apiMode !== "legacy";
   const {
     resources,
     isLoading,
@@ -122,6 +126,7 @@ export default function ResourcesScreen() {
       <StaggeredItem index={index}>
         <ResourceCard
           resource={item}
+          supportsResourceLogs={supportsResourceLogs}
           onPress={handleResourcePress}
           onDeploy={deploy}
           onPullLatest={pullLatest}
@@ -134,6 +139,7 @@ export default function ResourcesScreen() {
       </StaggeredItem>
     ),
     [
+      supportsResourceLogs,
       handleResourcePress,
       deploy,
       pullLatest,
@@ -146,6 +152,9 @@ export default function ResourcesScreen() {
   );
 
   const keyExtractor = useCallback((item: Resource) => item.uuid, []);
+
+  // Apps render a pressable card, others a plain one: keep recycling per type.
+  const getItemType = useCallback((item: Resource) => item.resourceType, []);
 
   const renderEmpty = useCallback(() => {
     if (isLoading) return null;
@@ -291,6 +300,7 @@ export default function ResourcesScreen() {
         data={filtered}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        getItemType={getItemType}
         contentContainerStyle={[
           styles.list,
           filtered.length === 0 && styles.emptyList,

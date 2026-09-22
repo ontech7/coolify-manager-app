@@ -139,7 +139,8 @@ export class CoolifyAPI {
 
   /**
    * For endpoints added in newer Coolify releases: an older server answers
-   * with a generic 404, so turn it into an actionable message.
+   * unknown routes with a generic `404 "Not found."`, so turn that into an
+   * actionable message. Specific 404s ("Application not found.") pass through.
    */
   private async requestSince<T>(
     minVersion: string,
@@ -149,7 +150,11 @@ export class CoolifyAPI {
     try {
       return await this.request<T>(endpoint, options);
     } catch (error) {
-      if (error instanceof HttpError && error.status === 404) {
+      if (
+        error instanceof HttpError &&
+        error.status === 404 &&
+        error.message === "Not found."
+      ) {
         throw new Error(`This action requires Coolify ${minVersion} or newer.`);
       }
       throw error;
@@ -196,15 +201,17 @@ export class CoolifyAPI {
 
   /** `force` rebuilds without the Docker build cache. */
   async deployApplication(uuid: string, force: boolean = false) {
+    // Only send `force` when set: older servers read the raw query string,
+    // and PHP casts "false" to true.
     if (this.apiMode === "legacy") {
       return this.request<DeployResponse>(
-        `/deploy?uuid=${uuid}&force=${force}`,
+        `/deploy?uuid=${uuid}${force ? "&force=true" : ""}`,
       );
     }
 
     return this.request<DeployResponse>("/deploy", {
       method: "POST",
-      body: JSON.stringify({ uuid, force }),
+      body: JSON.stringify(force ? { uuid, force } : { uuid }),
     });
   }
 
