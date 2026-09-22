@@ -2,26 +2,16 @@ import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { Text } from "@/components/ui/text";
 import { triggerHaptic } from "@/hooks/useHaptics";
-import { colors, radius, spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
 import { useCallback, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
+import { HealthPill } from "./health-pill";
 
 interface ServerCardProps {
   server: ServerResponse;
   onValidate: (uuid: string) => Promise<void>;
   onPress: (uuid: string) => void;
-}
-
-function HealthPill({ ok, label }: { ok: boolean; label: string }) {
-  const color = ok ? colors.status.success : colors.status.error;
-  const bg = ok ? colors.status.successBg : colors.status.errorBg;
-  return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.pillText, { color }]}>{label}</Text>
-    </View>
-  );
 }
 
 export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
@@ -53,7 +43,7 @@ export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
     : "n/a";
 
   return (
-    <Card style={{ marginBottom: spacing.lg }} onPress={handlePress}>
+    <Card style={styles.card} onPress={handlePress}>
       <View style={styles.header}>
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>
@@ -90,6 +80,9 @@ export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    marginBottom: spacing.lg,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -121,22 +114,5 @@ const styles = StyleSheet.create({
   pills: {
     flexDirection: "row",
     gap: spacing.sm,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-  },
-  pillText: {
-    fontSize: 11,
-    fontWeight: "500",
   },
 });

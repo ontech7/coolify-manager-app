@@ -1,5 +1,6 @@
 import { IconButton } from "@/components/ui/icon-button";
 import { triggerHaptic } from "@/hooks/useHaptics";
+import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { isResourceRunning } from "@/utils/status";
@@ -8,12 +9,14 @@ import { Alert, Linking, StyleSheet, View } from "react-native";
 
 interface ResourceActionsProps {
   resource: Resource;
-  onDeploy: (uuid: string) => Promise<void>;
+  /** Resolves with the queued deployment's UUID, when Coolify returns one. */
+  onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
   onStart: (uuid: string, type: ResourceType) => Promise<void>;
   onStop: (uuid: string, type: ResourceType) => Promise<void>;
-  onViewLogs: (uuid: string) => void;
+  onViewLogs: (resource: Resource) => void;
+  onOpenDeployment: (deploymentUuid: string) => void;
 }
 
 type ActionType = "deploy" | "pull" | "restart" | "start" | "stop";
@@ -26,22 +29,27 @@ export function ResourceActions({
   onStart,
   onStop,
   onViewLogs,
+  onOpenDeployment,
 }: ResourceActionsProps) {
+  const { activeInstance } = useCoolifyApi();
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
 
   const isApplication = resource.resourceType === "application";
   const isService = resource.resourceType === "service";
   const isRunning = isResourceRunning(resource.status);
+  // Database and service logs were added to the API in Coolify 4.2.0.
+  const canViewLogs = isApplication || activeInstance?.apiMode !== "legacy";
 
   const handleAction = useCallback(
-    async (
+    async <T,>(
       action: ActionType,
-      handler: (uuid: string, type: ResourceType) => Promise<void>,
-    ) => {
+      handler: (uuid: string, type: ResourceType) => Promise<T>,
+    ): Promise<T | undefined> => {
       setLoadingAction(action);
       try {
-        await handler(resource.uuid, resource.resourceType);
+        const result = await handler(resource.uuid, resource.resourceType);
         triggerHaptic("success");
+        return result;
       } catch (error) {
         triggerHaptic("error");
         Alert.alert(
@@ -50,6 +58,7 @@ export function ResourceActions({
             ? error.message
             : `Failed to ${action} ${resource.resourceType}`,
         );
+        return undefined;
       } finally {
         setLoadingAction(null);
       }
@@ -57,20 +66,36 @@ export function ResourceActions({
     [resource.uuid, resource.resourceType],
   );
 
+  const runDeploy = useCallback(
+    async (force: boolean) => {
+      const deploymentUuid = await handleAction("deploy", (uuid) =>
+        onDeploy(uuid, force),
+      );
+      if (!deploymentUuid) return;
+
+      Alert.alert("Deployment queued", `"${resource.name}" is deploying.`, [
+        { text: "OK", style: "cancel" },
+        {
+          text: "Watch live",
+          onPress: () => onOpenDeployment(deploymentUuid),
+        },
+      ]);
+    },
+    [handleAction, onDeploy, onOpenDeployment, resource.name],
+  );
+
   const handleDeploy = useCallback(() => {
     triggerHaptic("warning");
     Alert.alert(
       "Deploy Application",
-      `Are you sure you want to deploy "${resource.name}"?`,
+      `Deploy "${resource.name}"? Force rebuild skips the build cache.`,
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Deploy",
-          onPress: () => handleAction("deploy", () => onDeploy(resource.uuid)),
-        },
+        { text: "Force Rebuild", onPress: () => runDeploy(true) },
+        { text: "Deploy", onPress: () => runDeploy(false) },
       ],
     );
-  }, [resource.name, resource.uuid, handleAction, onDeploy]);
+  }, [resource.name, runDeploy]);
 
   const handlePullLatest = useCallback(() => {
     triggerHaptic("warning");
@@ -117,8 +142,8 @@ export function ResourceActions({
   }, [isRunning, resource.name, handleAction, onStart, onStop]);
 
   const handleViewLogs = useCallback(() => {
-    onViewLogs(resource.uuid);
-  }, [resource.uuid, onViewLogs]);
+    onViewLogs(resource);
+  }, [resource, onViewLogs]);
 
   const handleOpenWebsite = useCallback(() => {
     if (resource.fqdn) {
@@ -171,7 +196,7 @@ export function ResourceActions({
         />
       </View>
       <View style={styles.actionsRight}>
-        {isApplication && (
+        {canViewLogs && (
           <IconButton
             name="article"
             size={14}

@@ -1,41 +1,38 @@
-import { ResourceCard } from "@/components/resources/resource-card";
 import { ErrorState } from "@/components/error-state";
+import { ResourceCard } from "@/components/resources/resource-card";
+import { StatusSummary } from "@/components/resources/status-summary";
+import { TabHeader } from "@/components/tab-header";
+import { AutoRefreshButton } from "@/components/ui/auto-refresh-button";
 import {
   EmptyState,
   NotConfiguredEmptyState,
 } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Input } from "@/components/ui/input";
+import { SkeletonList } from "@/components/ui/skeleton-list";
+import { StaggeredItem } from "@/components/ui/staggered-item";
 import { Text } from "@/components/ui/text";
 import { useResources } from "@/hooks/useResources";
-import { colors, radius, spacing } from "@/theme";
+import { colors, motion, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 type FilterType = "all" | ResourceType;
 
-const FILTERS: { key: FilterType; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "application", label: "Apps" },
-  { key: "database", label: "DBs" },
-  { key: "service", label: "Services" },
+const FILTERS: { key: FilterType; label: string; searchLabel: string }[] = [
+  { key: "all", label: "All", searchLabel: "resources" },
+  { key: "application", label: "Apps", searchLabel: "applications" },
+  { key: "database", label: "DBs", searchLabel: "databases" },
+  { key: "service", label: "Services", searchLabel: "services" },
 ];
 
+const toolbarEntering = FadeIn.duration(motion.duration.normal);
+
 export default function ResourcesScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     resources,
@@ -54,33 +51,44 @@ export default function ResourcesScreen() {
   } = useResources();
 
   const [filter, setFilter] = useState<FilterType>("all");
+  const [isSearching, setIsSearching] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const rotation = useSharedValue(0);
+  const counts = useMemo(() => {
+    const result: Record<FilterType, number> = {
+      all: resources.length,
+      application: 0,
+      database: 0,
+      service: 0,
+    };
+    for (const resource of resources) result[resource.resourceType]++;
+    return result;
+  }, [resources]);
 
-  useEffect(() => {
-    if (autoRefreshEnabled) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 1000, easing: Easing.linear }),
-        -1,
-        false,
-      );
-    } else {
-      cancelAnimation(rotation);
-      rotation.value = 0;
-    }
-  }, [autoRefreshEnabled, rotation]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return resources.filter(
+      (r) =>
+        (filter === "all" || r.resourceType === filter) &&
+        (!q ||
+          r.name.toLowerCase().includes(q) ||
+          (r.subtitle?.toLowerCase().includes(q) ?? false)),
+    );
+  }, [resources, filter, query]);
 
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  const handleOpenSearch = useCallback(() => {
+    setIsSearching(true);
+  }, []);
 
-  const filtered = useMemo(
-    () =>
-      filter === "all"
-        ? resources
-        : resources.filter((r) => r.resourceType === filter),
-    [resources, filter],
-  );
+  const handleCloseSearch = useCallback(() => {
+    setIsSearching(false);
+    setQuery("");
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    handleCloseSearch();
+    setFilter("all");
+  }, [handleCloseSearch]);
 
   const handleGoToSettings = useCallback(() => {
     router.push("/settings");
@@ -94,24 +102,36 @@ export default function ResourcesScreen() {
   );
 
   const handleViewLogs = useCallback(
-    (uuid: string) => {
-      router.push(`/application/${uuid}/logs` as Href);
+    (resource: Resource) => {
+      router.push(
+        `/logs/${resource.uuid}?type=${resource.resourceType}&name=${encodeURIComponent(resource.name)}` as Href,
+      );
+    },
+    [router],
+  );
+
+  const handleOpenDeployment = useCallback(
+    (deploymentUuid: string) => {
+      router.push(`/deployment/${deploymentUuid}` as Href);
     },
     [router],
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Resource }) => (
-      <ResourceCard
-        resource={item}
-        onPress={handleResourcePress}
-        onDeploy={deploy}
-        onPullLatest={pullLatest}
-        onRestart={restart}
-        onStart={start}
-        onStop={stop}
-        onViewLogs={handleViewLogs}
-      />
+    ({ item, index }: { item: Resource; index: number }) => (
+      <StaggeredItem index={index}>
+        <ResourceCard
+          resource={item}
+          onPress={handleResourcePress}
+          onDeploy={deploy}
+          onPullLatest={pullLatest}
+          onRestart={restart}
+          onStart={start}
+          onStop={stop}
+          onViewLogs={handleViewLogs}
+          onOpenDeployment={handleOpenDeployment}
+        />
+      </StaggeredItem>
     ),
     [
       handleResourcePress,
@@ -121,6 +141,7 @@ export default function ResourcesScreen() {
       start,
       stop,
       handleViewLogs,
+      handleOpenDeployment,
     ],
   );
 
@@ -131,6 +152,17 @@ export default function ResourcesScreen() {
     if (!isConfigured) {
       return <NotConfiguredEmptyState onGoToSettings={handleGoToSettings} />;
     }
+    if (resources.length > 0) {
+      return (
+        <EmptyState
+          icon="search-off"
+          title="No Matches"
+          message="Nothing matches the current filter or search."
+          actionLabel="Clear Filters"
+          onAction={handleClearFilters}
+        />
+      );
+    }
     return (
       <EmptyState
         icon="layers"
@@ -140,19 +172,52 @@ export default function ResourcesScreen() {
         onAction={refresh}
       />
     );
-  }, [isLoading, isConfigured, handleGoToSettings, refresh]);
+  }, [
+    isLoading,
+    isConfigured,
+    resources.length,
+    handleGoToSettings,
+    handleClearFilters,
+    refresh,
+  ]);
+
+  const header = (
+    <TabHeader
+      title="Resources"
+      subtitle={
+        isConfigured && !isLoading ? (
+          <StatusSummary resources={resources} />
+        ) : (
+          "Apps, databases & services"
+        )
+      }
+    >
+      <AutoRefreshButton
+        enabled={autoRefreshEnabled}
+        onToggle={toggleAutoRefresh}
+      />
+      <IconButton
+        name="refresh"
+        size={24}
+        onPress={refresh}
+        loading={isRefreshing}
+      />
+    </TabHeader>
+  );
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LoadingSpinner message="Loading resources..." />
+      <View style={styles.container}>
+        {header}
+        <SkeletonList />
       </View>
     );
   }
 
   if (error && resources.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        {header}
         <ErrorState message={error} onRetry={refresh} />
       </View>
     );
@@ -160,70 +225,65 @@ export default function ResourcesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <View style={styles.titleGroup}>
-          <Text style={styles.title}>Resources</Text>
-          <Text style={styles.subtitle}>Apps, databases & services</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable
-            style={[
-              styles.autoRefreshButton,
-              autoRefreshEnabled && styles.autoRefreshButtonActive,
-            ]}
-            onPress={toggleAutoRefresh}
-          >
-            <Animated.View style={autoRefreshEnabled && animatedIconStyle}>
-              <MaterialIcons
-                name="sync"
-                size={14}
-                color={
-                  autoRefreshEnabled
-                    ? colors.primary.default
-                    : colors.text.muted
-                }
-              />
-            </Animated.View>
-            <Text
-              style={[
-                styles.autoRefreshText,
-                autoRefreshEnabled && styles.autoRefreshTextActive,
-              ]}
-            >
-              Auto
-            </Text>
-          </Pressable>
-          <IconButton
-            name="refresh"
-            size={24}
-            onPress={refresh}
-            loading={isRefreshing}
-          />
-        </View>
-      </View>
+      {header}
 
       {isConfigured && (
-        <View style={styles.filters}>
-          {FILTERS.map(({ key, label }) => {
-            const active = filter === key;
-            const count =
-              key === "all"
-                ? resources.length
-                : resources.filter((r) => r.resourceType === key).length;
-            return (
-              <Pressable
-                key={key}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setFilter(key)}
-              >
-                <Text
-                  style={[styles.filterText, active && styles.filterTextActive]}
-                >
-                  {label} {count}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.toolbar}>
+          {isSearching ? (
+            <Animated.View entering={toolbarEntering} style={styles.toolbarRow}>
+              <Input
+                placeholder={`Search ${FILTERS.find((f) => f.key === filter)?.searchLabel}…`}
+                value={query}
+                onChangeText={setQuery}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+                containerStyle={styles.searchInput}
+              />
+              <IconButton
+                name="close"
+                size={22}
+                color={colors.text.muted}
+                onPress={handleCloseSearch}
+                accessibilityLabel="Close search"
+              />
+            </Animated.View>
+          ) : (
+            <Animated.View entering={toolbarEntering} style={styles.toolbarRow}>
+              <View style={styles.filters}>
+                {FILTERS.map(({ key, label }) => {
+                  const active = filter === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                      ]}
+                      onPress={() => setFilter(key)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterText,
+                          active && styles.filterTextActive,
+                        ]}
+                      >
+                        {label} {counts[key]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <IconButton
+                name="search"
+                size={22}
+                color={colors.text.muted}
+                onPress={handleOpenSearch}
+                accessibilityLabel="Search"
+              />
+            </Animated.View>
+          )}
         </View>
       )}
 
@@ -236,6 +296,8 @@ export default function ResourcesScreen() {
           filtered.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={renderEmpty}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -255,57 +317,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  toolbar: {
+    height: 44,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
+    justifyContent: "center",
   },
-  titleGroup: {
-    gap: spacing.xs,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.text.muted,
-  },
-  headerActions: {
+  toolbarRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.lg,
-  },
-  autoRefreshButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface.default,
-  },
-  autoRefreshButtonActive: {
-    backgroundColor: colors.primary.background,
-  },
-  autoRefreshText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.text.muted,
-  },
-  autoRefreshTextActive: {
-    color: colors.primary.default,
+    gap: spacing.md,
   },
   filters: {
+    flex: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
   },
   filterChip: {
     paddingVertical: spacing.xs,
@@ -324,8 +350,12 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: colors.primary.light,
   },
+  searchInput: {
+    flex: 1,
+  },
   list: {
     padding: spacing.xl,
+    paddingTop: spacing.md,
   },
   emptyList: {
     flex: 1,

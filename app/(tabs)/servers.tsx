@@ -1,23 +1,22 @@
 import { ErrorState } from "@/components/error-state";
 import { ServerCard } from "@/components/servers/server-card";
+import { TabHeader } from "@/components/tab-header";
 import {
   EmptyState,
   NotConfiguredEmptyState,
 } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Text } from "@/components/ui/text";
+import { SkeletonList } from "@/components/ui/skeleton-list";
+import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useServers } from "@/hooks/useServers";
 import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { RefreshControl, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ServersScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     servers,
@@ -37,12 +36,14 @@ export default function ServersScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: ServerResponse }) => (
-      <ServerCard
-        server={item}
-        onValidate={validate}
-        onPress={handleServerPress}
-      />
+    ({ item, index }: { item: ServerResponse; index: number }) => (
+      <StaggeredItem index={index}>
+        <ServerCard
+          server={item}
+          onValidate={validate}
+          onPress={handleServerPress}
+        />
+      </StaggeredItem>
     ),
     [validate, handleServerPress],
   );
@@ -69,17 +70,38 @@ export default function ServersScreen() {
     );
   }, [isLoading, isConfigured, handleGoToSettings, refresh]);
 
+  const subtitle = useMemo(() => {
+    if (servers.length === 0) return "Health & connectivity";
+    const unreachable = servers.filter((s) => !s.settings?.is_reachable).length;
+    return unreachable > 0
+      ? `${unreachable} of ${servers.length} unreachable`
+      : `All ${servers.length} reachable`;
+  }, [servers]);
+
+  const header = (
+    <TabHeader title="Servers" subtitle={subtitle}>
+      <IconButton
+        name="refresh"
+        size={24}
+        onPress={refresh}
+        loading={isRefreshing}
+      />
+    </TabHeader>
+  );
+
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LoadingSpinner message="Loading servers..." />
+      <View style={styles.container}>
+        {header}
+        <SkeletonList count={3} />
       </View>
     );
   }
 
   if (error && servers.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        {header}
         <ErrorState message={error} onRetry={refresh} />
       </View>
     );
@@ -87,18 +109,7 @@ export default function ServersScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <View style={styles.titleGroup}>
-          <Text style={styles.title}>Servers</Text>
-          <Text style={styles.subtitle}>Health & connectivity</Text>
-        </View>
-        <IconButton
-          name="refresh"
-          size={24}
-          onPress={refresh}
-          loading={isRefreshing}
-        />
-      </View>
+      {header}
 
       <FlashList
         data={servers}
@@ -127,27 +138,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  titleGroup: {
-    gap: spacing.xs,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.text.muted,
   },
   list: {
     padding: spacing.xl,

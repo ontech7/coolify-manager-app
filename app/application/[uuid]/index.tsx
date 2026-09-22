@@ -21,7 +21,7 @@ export default function ApplicationDetailsModal() {
 
   const insets = useSafeAreaInsets();
 
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, activeInstance } = useCoolifyApi();
 
   const [application, setApplication] = useState<ApplicationResponse | null>(
     null,
@@ -63,13 +63,19 @@ export default function ApplicationDetailsModal() {
     router.back();
   }, [router]);
 
+  const encodedName = encodeURIComponent(application?.name ?? "");
+
   const handleViewLogs = useCallback(() => {
-    router.push(`/application/${uuid}/logs` as Href);
-  }, [router, uuid]);
+    router.push(`/logs/${uuid}?type=application&name=${encodedName}` as Href);
+  }, [router, uuid, encodedName]);
 
   const handleViewDeployments = useCallback(() => {
     router.push(`/application/${uuid}/deployments` as Href);
   }, [router, uuid]);
+
+  const handleRollback = useCallback(() => {
+    router.push(`/application/${uuid}/rollback?name=${encodedName}` as Href);
+  }, [router, uuid, encodedName]);
 
   const fqdnUrls = useMemo(
     () =>
@@ -148,6 +154,16 @@ export default function ApplicationDetailsModal() {
             />
             <Text style={styles.actionButtonText}>Logs</Text>
           </Pressable>
+          {activeInstance?.apiMode !== "legacy" && (
+            <Pressable style={styles.actionButton} onPress={handleRollback}>
+              <MaterialIcons
+                name="settings-backup-restore"
+                size={20}
+                color={colors.primary.light}
+              />
+              <Text style={styles.actionButtonText}>Rollback</Text>
+            </Pressable>
+          )}
         </View>
 
         <DetailTable>

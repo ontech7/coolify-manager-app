@@ -4,15 +4,32 @@ import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { LIVE_DEPLOYMENT_REFRESH_INTERVAL } from "@/constants";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { triggerHaptic } from "@/hooks/useHaptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
 import { formatDateTime } from "@/utils/date";
-import { getDeploymentStatus } from "@/utils/status";
+import {
+  canCancelDeployment,
+  getDeploymentStatus,
+  isDeploymentActive,
+} from "@/utils/status";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+/** Distance from the bottom (px) within which the view keeps following logs. */
+const FOLLOW_THRESHOLD = 80;
 
 /**
  * Coolify stores deployment logs as a JSON-encoded array of entries
@@ -47,30 +64,42 @@ export default function DeploymentDetails() {
   const [deployment, setDeployment] = useState<DeploymentResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDeployment = useCallback(async () => {
-    if (!uuid || !api) return;
+  const scrollViewRef = useRef<ScrollView>(null);
+  // Follow new log lines only while the user is at the bottom of the page.
+  const isFollowingRef = useRef(true);
 
-    setIsLoading(true);
-    setError(null);
+  /** Silent by default: used by live polling without flashing a spinner. */
+  const fetchDeployment = useCallback(
+    async (showRefreshing = false) => {
+      if (!uuid || !api) return;
 
-    try {
       if (!isConfigured) {
         setError("Not configured");
+        setIsLoading(false);
         return;
       }
 
-      const dep = await api.getDeployment(uuid);
-      setDeployment(dep);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load deployment",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [uuid, api, isConfigured]);
+      if (showRefreshing) setIsRefreshing(true);
+
+      try {
+        const dep = await api.getDeployment(uuid);
+        setDeployment(dep);
+        setError(null);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load deployment",
+        );
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [uuid, api, isConfigured],
+  );
 
   useEffect(() => {
     if (api) {
@@ -78,15 +107,73 @@ export default function DeploymentDetails() {
     }
   }, [api, fetchDeployment]);
 
+  const isActive = isDeploymentActive(deployment?.status);
+
+  // Watch the build live while it's queued or running.
+  useAutoRefresh(fetchDeployment, isActive, LIVE_DEPLOYMENT_REFRESH_INTERVAL);
+
   const handleClose = useCallback(() => {
     router.back();
   }, [router]);
 
   const handleRefresh = useCallback(() => {
-    fetchDeployment();
+    fetchDeployment(true);
   }, [fetchDeployment]);
 
-  const buildLogs = parseDeploymentLogs(deployment?.logs);
+  const handleCancel = useCallback(() => {
+    if (!uuid || !api) return;
+    Alert.alert(
+      "Cancel Deployment",
+      "Are you sure you want to cancel this deployment?",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              await api.cancelDeployment(uuid);
+              triggerHaptic("success");
+              await fetchDeployment();
+            } catch (err) {
+              triggerHaptic("error");
+              Alert.alert(
+                "Error",
+                err instanceof Error
+                  ? err.message
+                  : "Failed to cancel deployment",
+              );
+            } finally {
+              setIsCancelling(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [uuid, api, fetchDeployment]);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } =
+        event.nativeEvent;
+      isFollowingRef.current =
+        layoutMeasurement.height + contentOffset.y >=
+        contentSize.height - FOLLOW_THRESHOLD;
+    },
+    [],
+  );
+
+  const handleContentSizeChange = useCallback(() => {
+    if (isActive && isFollowingRef.current) {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [isActive]);
+
+  const buildLogs = useMemo(
+    () => parseDeploymentLogs(deployment?.logs),
+    [deployment?.logs],
+  );
 
   if (isLoading) {
     return (
@@ -96,7 +183,8 @@ export default function DeploymentDetails() {
     );
   }
 
-  if (error || !deployment) {
+  // A failed live poll keeps showing the last known state.
+  if (!deployment) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
@@ -116,23 +204,46 @@ export default function DeploymentDetails() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          Deployment Details
+          {deployment.application_name || "Deployment Details"}
         </Text>
         <View style={styles.headerActions}>
-          <IconButton name="refresh" size={24} onPress={handleRefresh} />
+          {canCancelDeployment(deployment.status) && (
+            <IconButton
+              name="cancel"
+              size={24}
+              color={colors.status.error}
+              onPress={handleCancel}
+              loading={isCancelling}
+            />
+          )}
+          <IconButton
+            name="refresh"
+            size={24}
+            onPress={handleRefresh}
+            loading={isRefreshing}
+          />
           <IconButton name="close" size={24} onPress={handleClose} />
         </View>
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.content}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + spacing.xl },
         ]}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
+        onContentSizeChange={handleContentSizeChange}
       >
         <View style={styles.statusRow}>
           <StatusBadge status={getDeploymentStatus(deployment.status)} />
+          {isActive && (
+            <Text style={styles.liveHint}>
+              Live · updates every {LIVE_DEPLOYMENT_REFRESH_INTERVAL / 1000}s
+            </Text>
+          )}
         </View>
 
         <DetailTable>
@@ -230,7 +341,13 @@ const styles = StyleSheet.create({
   },
   statusRow: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     marginBottom: spacing.xl,
+  },
+  liveHint: {
+    fontSize: 12,
+    color: colors.text.muted,
   },
   logsSection: {
     marginTop: spacing.xl,

@@ -9,3 +9,6 @@ export type { Radius } from "./radius";
 
 export { typography } from "./typography";
 export type { Typography } from "./typography";
+
+export { motion } from "./motion";
+export type { Motion } from "./motion";

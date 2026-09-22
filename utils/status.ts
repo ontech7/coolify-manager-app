@@ -102,3 +102,26 @@ export function isDeploymentActive(rawStatus?: string) {
 export function canCancelDeployment(rawStatus?: string) {
   return isDeploymentActive(rawStatus);
 }
+
+export interface StatusSummary {
+  running: number;
+  unhealthy: number;
+  stopped: number;
+}
+
+/** At-a-glance counts for a list of resources, for the screen header. */
+export function summarizeStatuses(
+  items: readonly { status?: string }[],
+): StatusSummary {
+  const summary: StatusSummary = { running: 0, unhealthy: 0, stopped: 0 };
+
+  for (const item of items) {
+    const status = getResourceStatus(item.status);
+    if (status === "running:healthy") summary.running++;
+    else if (status === "running:unhealthy" || status === "exited:unhealthy")
+      summary.unhealthy++;
+    else if (status === "stopped") summary.stopped++;
+  }
+
+  return summary;
+}

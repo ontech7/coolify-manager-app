@@ -1,3 +1,4 @@
+import { SERVER_ACTIONS_MIN_VERSION } from "@/constants";
 import type {
   ApplicationDeploymentsResponse,
   ApplicationLogsResponse,
@@ -5,14 +6,28 @@ import type {
   DatabaseResponse,
   DeploymentResponse,
   DeployResponse,
+  MessageResponse,
+  RollbackImagesResponse,
+  RollbackResponse,
   ServerResource,
   ServerResponse,
+  ServiceDetailResponse,
   ServiceResponse,
 } from "@/types/api";
 import type { ApiMode } from "@/types/config";
 
 interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
+}
+
+/** Non-2xx API response. Keeps the status so callers can tell a 404 apart. */
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
 /**
@@ -96,7 +111,7 @@ export class CoolifyAPI {
         const errorMessage =
           (error as { message?: string }).message ||
           `Status ${response.status}: ${response.statusText}`;
-        throw new Error(errorMessage);
+        throw new HttpError(errorMessage, response.status);
       }
 
       return (await response.json()) as T;
@@ -117,6 +132,25 @@ export class CoolifyAPI {
             "Unable to connect to server. Please check URL and connection.",
           );
         }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * For endpoints added in newer Coolify releases: an older server answers
+   * with a generic 404, so turn it into an actionable message.
+   */
+  private async requestSince<T>(
+    minVersion: string,
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<T> {
+    try {
+      return await this.request<T>(endpoint, options);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 404) {
+        throw new Error(`This action requires Coolify ${minVersion} or newer.`);
       }
       throw error;
     }
@@ -160,20 +194,39 @@ export class CoolifyAPI {
     });
   }
 
-  async deployApplication(uuid: string) {
+  /** `force` rebuilds without the Docker build cache. */
+  async deployApplication(uuid: string, force: boolean = false) {
     if (this.apiMode === "legacy") {
-      return this.request<DeployResponse>(`/deploy?uuid=${uuid}`);
+      return this.request<DeployResponse>(
+        `/deploy?uuid=${uuid}&force=${force}`,
+      );
     }
 
     return this.request<DeployResponse>("/deploy", {
       method: "POST",
-      body: JSON.stringify({ uuid }),
+      body: JSON.stringify({ uuid, force }),
     });
   }
 
   async getApplicationLogs(uuid: string, lines: number = 100) {
     return this.request<ApplicationLogsResponse>(
       `/applications/${uuid}/logs?lines=${lines}`,
+    );
+  }
+
+  async getRollbackImages(uuid: string) {
+    return this.requestSince<RollbackImagesResponse>(
+      SERVER_ACTIONS_MIN_VERSION,
+      `/applications/${uuid}/rollback-images`,
+    );
+  }
+
+  /** Queue a deployment of a previous image. `commit` is the image tag. */
+  async rollbackApplication(uuid: string, commit: string) {
+    return this.requestSince<RollbackResponse>(
+      SERVER_ACTIONS_MIN_VERSION,
+      `/applications/${uuid}/rollback`,
+      { method: "POST", body: JSON.stringify({ commit }) },
     );
   }
 
@@ -219,10 +272,36 @@ export class CoolifyAPI {
     });
   }
 
+  /** Coolify >= 4.2.0 only. */
+  async getDatabaseLogs(uuid: string, lines: number = 100) {
+    return this.request<ApplicationLogsResponse>(
+      `/databases/${uuid}/logs?lines=${lines}`,
+    );
+  }
+
   // Services
 
   async getServices() {
     return this.request<ServiceResponse[]>("/services");
+  }
+
+  /** Includes the service's sub-applications and sub-databases. */
+  async getService(uuid: string) {
+    return this.request<ServiceDetailResponse>(`/services/${uuid}`);
+  }
+
+  /**
+   * Logs of one container of a service (Coolify >= 4.2.0). `subServiceName`
+   * is the `name` of one of the service's applications or databases.
+   */
+  async getServiceLogs(
+    uuid: string,
+    subServiceName: string,
+    lines: number = 100,
+  ) {
+    return this.request<ApplicationLogsResponse>(
+      `/services/${uuid}/logs?sub_service_name=${encodeURIComponent(subServiceName)}&lines=${lines}`,
+    );
   }
 
   async startService(uuid: string) {
@@ -267,5 +346,22 @@ export class CoolifyAPI {
     await this.request<void>(`/servers/${uuid}/validate`, {
       method: this.actionMethod(),
     });
+  }
+
+  async restartProxy(uuid: string) {
+    return this.requestSince<MessageResponse>(
+      SERVER_ACTIONS_MIN_VERSION,
+      `/servers/${uuid}/proxy/restart`,
+      { method: "POST" },
+    );
+  }
+
+  /** Removes unused images, build cache and stopped containers. */
+  async runDockerCleanup(uuid: string) {
+    return this.requestSince<MessageResponse>(
+      SERVER_ACTIONS_MIN_VERSION,
+      `/servers/${uuid}/docker-cleanup/run`,
+      { method: "POST" },
+    );
   }
 }

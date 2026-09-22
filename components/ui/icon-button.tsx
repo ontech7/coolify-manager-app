@@ -30,6 +30,7 @@ interface IconButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   hitSlop?: PressableProps["hitSlop"];
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<
@@ -72,6 +73,7 @@ export function IconButton({
   disabled = false,
   style,
   hitSlop = 8,
+  accessibilityLabel,
 }: IconButtonProps) {
   const handlePress = useCallback(
     (event: Parameters<NonNullable<PressableProps["onPress"]>>[0]) => {
@@ -105,6 +107,8 @@ export function IconButton({
       onPress={handlePress}
       disabled={isDisabled}
       hitSlop={hitSlop}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
     >
       {loading ? (
         <ActivityIndicator size={size * 0.8} color={iconColor} />

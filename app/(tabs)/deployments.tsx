@@ -1,32 +1,23 @@
 import { DeploymentCard } from "@/components/deployments/deployment-card";
 import { ErrorState } from "@/components/error-state";
+import { TabHeader } from "@/components/tab-header";
+import { AutoRefreshButton } from "@/components/ui/auto-refresh-button";
 import {
   EmptyState,
   NotConfiguredEmptyState,
 } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Text } from "@/components/ui/text";
+import { SkeletonList } from "@/components/ui/skeleton-list";
+import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useDeployments } from "@/hooks/useDeployments";
-import { colors, radius, spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
-import { useCallback, useEffect } from "react";
-import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback } from "react";
+import { RefreshControl, StyleSheet, View } from "react-native";
 
 export default function DeploymentsScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     deployments,
@@ -40,25 +31,6 @@ export default function DeploymentsScreen() {
     cancelDeployment,
   } = useDeployments();
 
-  const rotation = useSharedValue(0);
-
-  useEffect(() => {
-    if (autoRefreshEnabled) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 1000, easing: Easing.linear }),
-        -1,
-        false,
-      );
-    } else {
-      cancelAnimation(rotation);
-      rotation.value = 0;
-    }
-  }, [autoRefreshEnabled, rotation]);
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
   const handleGoToSettings = useCallback(() => {
     router.push("/settings");
   }, [router]);
@@ -71,12 +43,14 @@ export default function DeploymentsScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: DeploymentResponse }) => (
-      <DeploymentCard
-        deployment={item}
-        onPress={handleDeploymentPress}
-        onCancel={cancelDeployment}
-      />
+    ({ item, index }: { item: DeploymentResponse; index: number }) => (
+      <StaggeredItem index={index}>
+        <DeploymentCard
+          deployment={item}
+          onPress={handleDeploymentPress}
+          onCancel={cancelDeployment}
+        />
+      </StaggeredItem>
     ),
     [handleDeploymentPress, cancelDeployment],
   );
@@ -102,17 +76,41 @@ export default function DeploymentsScreen() {
     );
   }, [isLoading, isConfigured, handleGoToSettings, refresh]);
 
+  const header = (
+    <TabHeader
+      title="Deployments"
+      subtitle={
+        deployments.length > 0
+          ? `${deployments.length} active`
+          : "Active & in progress"
+      }
+    >
+      <AutoRefreshButton
+        enabled={autoRefreshEnabled}
+        onToggle={toggleAutoRefresh}
+      />
+      <IconButton
+        name="refresh"
+        size={24}
+        onPress={refresh}
+        loading={isRefreshing}
+      />
+    </TabHeader>
+  );
+
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LoadingSpinner message="Loading deployments..." />
+      <View style={styles.container}>
+        {header}
+        <SkeletonList count={3} />
       </View>
     );
   }
 
   if (error && deployments.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        {header}
         <ErrorState message={error} onRetry={refresh} />
       </View>
     );
@@ -120,47 +118,7 @@ export default function DeploymentsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <View style={styles.titleGroup}>
-          <Text style={styles.title}>Deployments</Text>
-          <Text style={styles.subtitle}>Active & in progress</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable
-            style={[
-              styles.autoRefreshButton,
-              autoRefreshEnabled && styles.autoRefreshButtonActive,
-            ]}
-            onPress={toggleAutoRefresh}
-          >
-            <Animated.View style={autoRefreshEnabled && animatedIconStyle}>
-              <MaterialIcons
-                name="sync"
-                size={14}
-                color={
-                  autoRefreshEnabled
-                    ? colors.primary.default
-                    : colors.text.muted
-                }
-              />
-            </Animated.View>
-            <Text
-              style={[
-                styles.autoRefreshText,
-                autoRefreshEnabled && styles.autoRefreshTextActive,
-              ]}
-            >
-              Auto
-            </Text>
-          </Pressable>
-          <IconButton
-            name="refresh"
-            size={24}
-            onPress={refresh}
-            loading={isRefreshing}
-          />
-        </View>
-      </View>
+      {header}
 
       <FlashList
         data={deployments}
@@ -189,52 +147,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  titleGroup: {
-    gap: spacing.xs,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.text.muted,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-  },
-  autoRefreshButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface.default,
-  },
-  autoRefreshButtonActive: {
-    backgroundColor: colors.primary.background,
-  },
-  autoRefreshText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.text.muted,
-  },
-  autoRefreshTextActive: {
-    color: colors.primary.default,
   },
   list: {
     padding: spacing.xl,

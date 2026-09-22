@@ -39,3 +39,16 @@ export function formatTime(dateString: string): string {
     return "Unknown";
   }
 }
+
+// Docker prints dates as "2025-01-15 10:30:00 +0000 UTC". Returns relative
+// time (e.g., "3 days ago"), or the raw value when it isn't in that format.
+export function formatDockerDate(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const match = raw.match(
+    /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-]\d{2})(\d{2})/,
+  );
+  if (!match) return raw;
+  const iso = `${match[1]}T${match[2]}${match[3]}:${match[4]}`;
+  const relative = formatRelativeTime(iso);
+  return relative === "Unknown" ? raw : relative;
+}

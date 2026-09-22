@@ -1,5 +1,7 @@
 import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
+import { HealthPill } from "@/components/servers/health-pill";
+import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -9,6 +11,7 @@ import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { ServerResource, ServerResponse } from "@/types/api";
 import { getResourceStatus } from "@/utils/status";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
@@ -19,28 +22,20 @@ function cleanResourceType(type: string): string {
   return last.replace(/^Standalone/, "");
 }
 
-function HealthPill({ ok, label }: { ok: boolean; label: string }) {
-  const color = ok ? colors.status.success : colors.status.error;
-  const bg = ok ? colors.status.successBg : colors.status.errorBg;
-  return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.pillText, { color }]}>{label}</Text>
-    </View>
-  );
-}
+type ServerAction = "proxy" | "cleanup";
 
 export default function ServerDetailsModal() {
   const { uuid } = useLocalSearchParams<{ uuid: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, activeInstance } = useCoolifyApi();
 
   const [server, setServer] = useState<ServerResponse | null>(null);
   const [resources, setResources] = useState<ServerResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
+  const [runningAction, setRunningAction] = useState<ServerAction | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchServer = useCallback(async () => {
@@ -99,6 +94,58 @@ export default function ServerDetailsModal() {
     }
   }, [uuid, api, fetchServer]);
 
+  const runAction = useCallback(
+    async (action: ServerAction) => {
+      if (!uuid || !api) return;
+      setRunningAction(action);
+      try {
+        const result =
+          action === "proxy"
+            ? await api.restartProxy(uuid)
+            : await api.runDockerCleanup(uuid);
+        triggerHaptic("success");
+        Alert.alert("Done", result.message);
+      } catch (err) {
+        triggerHaptic("error");
+        Alert.alert(
+          "Error",
+          err instanceof Error ? err.message : "Action failed",
+        );
+      } finally {
+        setRunningAction(null);
+      }
+    },
+    [uuid, api],
+  );
+
+  const handleRestartProxy = useCallback(() => {
+    triggerHaptic("warning");
+    Alert.alert(
+      "Restart Proxy",
+      "Every site on this server will be briefly unreachable while the proxy restarts.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => runAction("proxy"),
+        },
+      ],
+    );
+  }, [runAction]);
+
+  const handleDockerCleanup = useCallback(() => {
+    triggerHaptic("warning");
+    Alert.alert(
+      "Docker Cleanup",
+      "Remove unused images, build cache and stopped containers to free disk space?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Clean Up", onPress: () => runAction("cleanup") },
+      ],
+    );
+  }, [runAction]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -155,6 +202,41 @@ export default function ServerDetailsModal() {
           />
           <HealthPill ok={usable} label={usable ? "Usable" : "Not usable"} />
         </View>
+
+        {activeInstance?.apiMode !== "legacy" && (
+          <View style={styles.actionsRow}>
+            <Button
+              title="Restart Proxy"
+              variant="secondary"
+              adornmentStart={
+                <MaterialIcons
+                  name="restart-alt"
+                  size={18}
+                  color={colors.action.restart}
+                />
+              }
+              onPress={handleRestartProxy}
+              loading={runningAction === "proxy"}
+              disabled={runningAction !== null}
+              style={styles.actionButton}
+            />
+            <Button
+              title="Docker Cleanup"
+              variant="secondary"
+              adornmentStart={
+                <MaterialIcons
+                  name="cleaning-services"
+                  size={18}
+                  color={colors.action.deploy}
+                />
+              }
+              onPress={handleDockerCleanup}
+              loading={runningAction === "cleanup"}
+              disabled={runningAction !== null}
+              style={styles.actionButton}
+            />
+          </View>
+        )}
 
         <DetailTable>
           <DetailRow label="UUID" value={server.uuid} mono copyable />
@@ -239,22 +321,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.xl,
   },
-  pill: {
+  actionsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  actionButton: {
+    flex: 1,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-  },
-  pillText: {
-    fontSize: 11,
-    fontWeight: "500",
+    borderWidth: 1,
+    borderColor: colors.surface.border,
   },
   sectionTitle: {
     fontSize: 13,
