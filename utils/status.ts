@@ -2,6 +2,7 @@ import type {
   ApplicationResponse,
   ApplicationStatus,
   DeploymentStatus,
+  StatusCounts,
 } from "@/types/api";
 
 export function getApplicationStatus(
@@ -99,17 +100,11 @@ export function canCancelDeployment(rawStatus?: string) {
   return isDeploymentActive(rawStatus);
 }
 
-export interface StatusSummary {
-  running: number;
-  unhealthy: number;
-  stopped: number;
-}
-
 /** At-a-glance counts for a list of resources, for the screen header. */
 export function summarizeStatuses(
   items: readonly { status?: string }[],
-): StatusSummary {
-  const summary: StatusSummary = { running: 0, unhealthy: 0, stopped: 0 };
+): StatusCounts {
+  const summary: StatusCounts = { running: 0, unhealthy: 0, stopped: 0 };
 
   for (const item of items) {
     const status = getResourceStatus(item.status);

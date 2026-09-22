@@ -1,6 +1,6 @@
 import { colors, radius, spacing } from "@/theme";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -11,13 +11,14 @@ import Animated, {
 
 interface SkeletonListProps {
   count?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
  * Placeholder cards shown while a list loads for the first time. They share
  * a single pulsing opacity, so the cost is one animation regardless of count.
  */
-export function SkeletonList({ count = 5 }: SkeletonListProps) {
+export function SkeletonList({ count = 5, style }: SkeletonListProps) {
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
@@ -29,7 +30,8 @@ export function SkeletonList({ count = 5 }: SkeletonListProps) {
 
   return (
     <Animated.View
-      style={[styles.list, pulseStyle]}
+      style={[styles.list, style, pulseStyle]}
+      accessible
       accessibilityLabel="Loading"
       accessibilityRole="progressbar"
     >

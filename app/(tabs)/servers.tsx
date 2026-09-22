@@ -88,6 +88,7 @@ export default function ServersScreen() {
         size={24}
         onPress={refresh}
         loading={isRefreshing}
+        accessibilityLabel="Refresh"
       />
     </TabHeader>
   );

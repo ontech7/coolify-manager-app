@@ -171,6 +171,13 @@ export interface ServerResource {
   updated_at?: string;
 }
 
+/** Resources per health bucket, for header summaries. */
+export interface StatusCounts {
+  running: number;
+  unhealthy: number;
+  stopped: number;
+}
+
 // Unified resource (application | database | service)
 
 export type ResourceType = "application" | "database" | "service";

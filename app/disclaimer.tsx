@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { IconButton } from "@/components/ui/icon-button";
+import { ModalHeader } from "@/components/modal-header";
 import { Text } from "@/components/ui/text";
 import { colors, spacing } from "@/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -46,10 +46,7 @@ export default function DisclaimerScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle}>Disclaimer</Text>
-        <IconButton name="close" size={24} onPress={handleClose} />
-      </View>
+      <ModalHeader title="Disclaimer" onClose={handleClose} />
 
       <ScrollView
         style={styles.content}
@@ -81,7 +78,9 @@ export default function DisclaimerScreen() {
           Learn more at coolify.io
         </Text>
 
-        <Text style={styles.footer}>Made with ❤️ for the Coolify community</Text>
+        <Text style={styles.footer}>
+          Made with ❤️ for the Coolify community
+        </Text>
       </ScrollView>
     </View>
   );
@@ -91,22 +90,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
   },
   content: {
     flex: 1,

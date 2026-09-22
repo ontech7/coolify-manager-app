@@ -1,15 +1,14 @@
 import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
+import { ModalHeader } from "@/components/modal-header";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
-import {
-  LIVE_DEPLOYMENT_REFRESH_INTERVAL,
-  SCROLL_FOLLOW_THRESHOLD,
-} from "@/constants";
+import { LIVE_DEPLOYMENT_REFRESH_INTERVAL, LOG_LINES } from "@/constants";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { useScrollFollow } from "@/hooks/useScrollFollow";
+import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
@@ -19,16 +18,10 @@ import {
   getDeploymentStatus,
   isDeploymentActive,
 } from "@/utils/status";
+import { lastLines } from "@/utils/string";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
@@ -59,7 +52,7 @@ export default function DeploymentDetails() {
 
   const insets = useSafeAreaInsets();
 
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, isInitializing } = useCoolifyApi();
 
   const [deployment, setDeployment] = useState<DeploymentResponse | null>(null);
 
@@ -67,20 +60,16 @@ export default function DeploymentDetails() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const scrollViewRef = useRef<ScrollView>(null);
-  // Follow new log lines only while the user is at the bottom of the page.
-  const isFollowingRef = useRef(true);
   // Set once the deployment was seen running, so the lines that arrive with
   // the final status are still scrolled into view.
-  const wasLiveRef = useRef(false);
+  const [wasLive, setWasLive] = useState(false);
 
   /** Silent by default: used by live polling without flashing a spinner. */
   const fetchDeployment = useCallback(
     async (showRefreshing = false) => {
-      if (!uuid || !api) return;
-
-      if (!isConfigured) {
+      // Wait for the provider; once it's ready, no API means no instance.
+      if (isInitializing || !uuid) return;
+      if (!isConfigured || !api) {
         setError("Not configured");
         setIsLoading(false);
         return;
@@ -104,20 +93,22 @@ export default function DeploymentDetails() {
         setIsRefreshing(false);
       }
     },
-    [uuid, api, isConfigured],
+    [uuid, api, isConfigured, isInitializing],
   );
 
   useEffect(() => {
-    if (api) {
-      fetchDeployment();
-    }
-  }, [api, fetchDeployment]);
+    fetchDeployment();
+  }, [fetchDeployment]);
 
   const isActive = isDeploymentActive(deployment?.status);
 
   useEffect(() => {
-    if (isActive) wasLiveRef.current = true;
+    if (isActive) setWasLive(true);
   }, [isActive]);
+
+  const { scrollViewRef, onScroll, onContentSizeChange } = useScrollFollow(
+    isActive || wasLive,
+  );
 
   // Watch the build live while it's queued or running.
   useAutoRefresh(fetchDeployment, isActive, LIVE_DEPLOYMENT_REFRESH_INTERVAL);
@@ -163,31 +154,23 @@ export default function DeploymentDetails() {
     );
   }, [uuid, api, fetchDeployment]);
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { layoutMeasurement, contentOffset, contentSize } =
-        event.nativeEvent;
-      isFollowingRef.current =
-        layoutMeasurement.height + contentOffset.y >=
-        contentSize.height - SCROLL_FOLLOW_THRESHOLD;
-    },
-    [],
-  );
-
-  const handleContentSizeChange = useCallback(() => {
-    if ((isActive || wasLiveRef.current) && isFollowingRef.current) {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [isActive]);
-
   const buildLogs = useMemo(
     () => parseDeploymentLogs(deployment?.logs),
     [deployment?.logs],
   );
 
+  // While live, re-render only the tail: a full build log re-laid out every
+  // few seconds stutters on low-end phones. The full log shows once it ends.
+  const visibleLogs = useMemo(
+    () => (isActive ? lastLines(buildLogs, LOG_LINES) : buildLogs),
+    [isActive, buildLogs],
+  );
+  const isLogTruncated = visibleLogs.length < buildLogs.length;
+
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        <ModalHeader title="Deployment" onClose={handleClose} />
         <LoadingSpinner message="Loading deployment..." />
       </View>
     );
@@ -196,11 +179,8 @@ export default function DeploymentDetails() {
   // A failed live poll keeps showing the last known state.
   if (!deployment) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Error</Text>
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
+      <View style={styles.container}>
+        <ModalHeader title="Error" onClose={handleClose} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
             {error || "Deployment not found"}
@@ -212,29 +192,28 @@ export default function DeploymentDetails() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {deployment.application_name || "Deployment Details"}
-        </Text>
-        <View style={styles.headerActions}>
-          {canCancelDeployment(deployment.status) && (
-            <IconButton
-              name="cancel"
-              size={24}
-              color={colors.status.error}
-              onPress={handleCancel}
-              loading={isCancelling}
-            />
-          )}
+      <ModalHeader
+        title={deployment.application_name || "Deployment Details"}
+        onClose={handleClose}
+      >
+        {canCancelDeployment(deployment.status) && (
           <IconButton
-            name="refresh"
+            name="cancel"
             size={24}
-            onPress={handleRefresh}
-            loading={isRefreshing}
+            color={colors.status.error}
+            onPress={handleCancel}
+            loading={isCancelling}
+            accessibilityLabel="Cancel deployment"
           />
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
-      </View>
+        )}
+        <IconButton
+          name="refresh"
+          size={24}
+          onPress={handleRefresh}
+          loading={isRefreshing}
+          accessibilityLabel="Refresh deployment"
+        />
+      </ModalHeader>
 
       <ScrollView
         ref={scrollViewRef}
@@ -243,10 +222,13 @@ export default function DeploymentDetails() {
           styles.scrollContent,
           { paddingBottom: insets.bottom + spacing.xl },
         ]}
-        onScroll={handleScroll}
+        onScroll={onScroll}
         scrollEventThrottle={100}
-        onContentSizeChange={handleContentSizeChange}
+        onContentSizeChange={onContentSizeChange}
       >
+        {/* A failed poll keeps the last state on screen: say it's stale. */}
+        {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
         <View style={styles.statusRow}>
           <StatusBadge status={getDeploymentStatus(deployment.status)} />
           {isActive && (
@@ -304,10 +286,14 @@ export default function DeploymentDetails() {
 
         {buildLogs ? (
           <View style={styles.logsSection}>
-            <Text style={styles.logsTitle}>Build Logs</Text>
+            <Text style={styles.logsTitle}>
+              {isLogTruncated
+                ? `Build Logs · last ${LOG_LINES} lines while live`
+                : "Build Logs"}
+            </Text>
             <View style={styles.logsBox}>
               <Text style={styles.logsText} selectable>
-                {buildLogs}
+                {visibleLogs}
               </Text>
             </View>
           </View>
@@ -321,27 +307,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
   },
   content: {
     flex: 1,
@@ -369,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   logsBox: {
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backgroundColor: colors.background.code,
     borderRadius: radius.lg,
     padding: spacing.lg,
   },
@@ -384,6 +349,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
+  },
+  errorBanner: {
+    fontSize: 12,
+    color: colors.status.error,
+    backgroundColor: colors.status.errorBg,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
   errorText: {
     fontSize: 14,

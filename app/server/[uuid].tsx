@@ -1,12 +1,13 @@
 import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
+import { ModalHeader } from "@/components/modal-header";
 import { HealthPill } from "@/components/servers/health-pill";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { ServerResource, ServerResponse } from "@/types/api";
@@ -148,7 +149,8 @@ export default function ServerDetailsModal() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        <ModalHeader title="Server" onClose={handleClose} />
         <LoadingSpinner message="Loading server..." />
       </View>
     );
@@ -156,11 +158,8 @@ export default function ServerDetailsModal() {
 
   if (error || !server) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Error</Text>
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
+      <View style={styles.container}>
+        <ModalHeader title="Error" onClose={handleClose} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error || "Server not found"}</Text>
         </View>
@@ -173,20 +172,15 @@ export default function ServerDetailsModal() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {server.name}
-        </Text>
-        <View style={styles.headerActions}>
-          <IconButton
-            name="wifi-tethering"
-            size={24}
-            onPress={handleValidate}
-            loading={isValidating}
-          />
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
-      </View>
+      <ModalHeader title={server.name} onClose={handleClose}>
+        <IconButton
+          name="wifi-tethering"
+          size={24}
+          onPress={handleValidate}
+          loading={isValidating}
+          accessibilityLabel="Validate server"
+        />
+      </ModalHeader>
 
       <ScrollView
         style={styles.content}
@@ -288,27 +282,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
   },
   content: {
     flex: 1,

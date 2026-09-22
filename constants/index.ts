@@ -5,6 +5,9 @@ export const LIVE_DEPLOYMENT_REFRESH_INTERVAL = 3000; // 3 seconds
 
 export const LOG_LINES = 500;
 
+/** Screen-reader "double tap" on a card title opens the card. */
+export const ACTIVATE_ACTION = [{ name: "activate" as const }];
+
 /**
  * Distance from the bottom (px) within which a live log view keeps following
  * new lines. Scrolling further up pauses following so the user can read.

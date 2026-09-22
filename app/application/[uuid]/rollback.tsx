@@ -1,13 +1,14 @@
+import { ModalHeader } from "@/components/modal-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StaggeredItem } from "@/components/ui/staggered-item";
 import { Text } from "@/components/ui/text";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { RollbackImage } from "@/types/api";
 import { formatDockerDate } from "@/utils/date";
+import { formatImageTag } from "@/utils/string";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -21,11 +22,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** Commit SHAs are 40 hex chars; show them short like elsewhere in the app. */
-function formatTag(tag: string) {
-  return /^[0-9a-f]{40}$/i.test(tag) ? tag.slice(0, 7) : tag;
-}
-
 /**
  * Redeploy one of the Docker images Coolify still has for the application
  * (Coolify >= 4.3.0). Meant for "the last deploy broke production".
@@ -37,7 +33,7 @@ export default function RollbackModal() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { api } = useCoolifyApi();
+  const { api, isInitializing } = useCoolifyApi();
 
   const [images, setImages] = useState<RollbackImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +41,8 @@ export default function RollbackModal() {
   const [rollingBackTag, setRollingBackTag] = useState<string | null>(null);
 
   useEffect(() => {
+    // Wait for the provider; once it's ready, no API means no instance.
+    if (isInitializing) return;
     if (!api || !uuid) {
       setError("Not configured");
       setIsLoading(false);
@@ -60,7 +58,7 @@ export default function RollbackModal() {
         setError(err instanceof Error ? err.message : "Failed to load images"),
       )
       .finally(() => setIsLoading(false));
-  }, [api, uuid]);
+  }, [api, uuid, isInitializing]);
 
   const handleClose = useCallback(() => {
     router.back();
@@ -97,7 +95,7 @@ export default function RollbackModal() {
       triggerHaptic("warning");
       Alert.alert(
         "Roll Back",
-        `Redeploy ${name ? `"${name}" ` : ""}with image ${formatTag(image.tag)}?`,
+        `Redeploy ${name ? `"${name}" ` : ""}with image ${formatImageTag(image.tag)}?`,
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -113,12 +111,10 @@ export default function RollbackModal() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {name ? `${name} · Rollback` : "Rollback"}
-        </Text>
-        <IconButton name="close" size={24} onPress={handleClose} />
-      </View>
+      <ModalHeader
+        title={name ? `${name} · Rollback` : "Rollback"}
+        onClose={handleClose}
+      />
 
       {isLoading ? (
         <LoadingSpinner message="Loading images..." />
@@ -145,41 +141,57 @@ export default function RollbackModal() {
             Pick an image to redeploy. The current one is marked.
           </Text>
           <View style={styles.list}>
-            {images.map((image, index) => (
-              <StaggeredItem key={image.tag} index={index}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.row,
-                    index === images.length - 1 && styles.rowLast,
-                    pressed && !image.is_current && styles.rowPressed,
-                  ]}
-                  onPress={() => handleSelect(image)}
-                  disabled={image.is_current || rollingBackTag !== null}
-                >
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.tag} numberOfLines={1}>
-                      {formatTag(image.tag)}
-                    </Text>
-                    <Text style={styles.date}>
-                      {formatDockerDate(image.created_at)}
-                    </Text>
-                  </View>
-                  {image.is_current ? (
-                    <View style={styles.currentBadge}>
-                      <Text style={styles.currentText}>Current</Text>
+            {images.map((image, index) => {
+              const isBusy = rollingBackTag !== null;
+              return (
+                <StaggeredItem key={image.tag} index={index}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.row,
+                      index === images.length - 1 && styles.rowLast,
+                      pressed && !image.is_current && styles.rowPressed,
+                      isBusy &&
+                        rollingBackTag !== image.tag &&
+                        styles.rowDisabled,
+                    ]}
+                    onPress={() => handleSelect(image)}
+                    disabled={image.is_current || isBusy}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Image ${formatImageTag(image.tag)}, ${formatDockerDate(image.created_at)}`}
+                    accessibilityHint={
+                      image.is_current ? undefined : "Rolls back to this image"
+                    }
+                    accessibilityState={{
+                      disabled: image.is_current || isBusy,
+                      selected: image.is_current,
+                      busy: rollingBackTag === image.tag,
+                    }}
+                  >
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.tag} numberOfLines={1}>
+                        {formatImageTag(image.tag)}
+                      </Text>
+                      <Text style={styles.date}>
+                        {formatDockerDate(image.created_at)}
+                      </Text>
                     </View>
-                  ) : rollingBackTag === image.tag ? (
-                    <ActivityIndicator color={colors.primary.default} />
-                  ) : (
-                    <MaterialIcons
-                      name="settings-backup-restore"
-                      size={20}
-                      color={colors.primary.light}
-                    />
-                  )}
-                </Pressable>
-              </StaggeredItem>
-            ))}
+                    {image.is_current ? (
+                      <View style={styles.currentBadge}>
+                        <Text style={styles.currentText}>Current</Text>
+                      </View>
+                    ) : rollingBackTag === image.tag ? (
+                      <ActivityIndicator color={colors.primary.default} />
+                    ) : (
+                      <MaterialIcons
+                        name="settings-backup-restore"
+                        size={20}
+                        color={colors.primary.light}
+                      />
+                    )}
+                  </Pressable>
+                </StaggeredItem>
+              );
+            })}
           </View>
         </ScrollView>
       )}
@@ -191,22 +203,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
   },
   content: {
     padding: spacing.xl,
@@ -236,6 +232,9 @@ const styles = StyleSheet.create({
   },
   rowPressed: {
     backgroundColor: colors.surface.hover,
+  },
+  rowDisabled: {
+    opacity: 0.4,
   },
   rowInfo: {
     flex: 1,

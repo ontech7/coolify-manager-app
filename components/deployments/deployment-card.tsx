@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { ACTIVATE_ACTION } from "@/constants";
 import { colors, radius, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
 import { formatRelativeTime } from "@/utils/date";
@@ -63,7 +64,14 @@ export function DeploymentCard({
     <Card style={styles.card} onPress={handlePress}>
       <View style={styles.header}>
         <View style={styles.info}>
-          <Text style={styles.appName} numberOfLines={1}>
+          <Text
+            style={styles.appName}
+            numberOfLines={1}
+            accessibilityRole="button"
+            accessibilityHint="Opens deployment details"
+            accessibilityActions={ACTIVATE_ACTION}
+            onAccessibilityAction={handlePress}
+          >
             {deployment.application_name}
           </Text>
           <View style={styles.meta}>
@@ -89,6 +97,7 @@ export function DeploymentCard({
               onPress={handleCancel}
               loading={isCancelling}
               disabled={isCancelling}
+              accessibilityLabel="Cancel deployment"
             />
           )}
           <StatusBadge status={status} />

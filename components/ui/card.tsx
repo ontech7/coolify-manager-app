@@ -35,7 +35,11 @@ export function Card({ children, onPress, style }: CardProps) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-/** Shrinks slightly and highlights its border while pressed (UI thread). */
+/**
+ * Shrinks slightly and highlights its border while pressed (UI thread).
+ * Not a single accessibility element, so screen readers can still reach the
+ * buttons inside it; cards expose their open action on their title instead.
+ */
 function PressableCard({
   children,
   onPress,
@@ -68,6 +72,9 @@ function PressableCard({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      // Skip the press feedback when the touch turns into a scroll.
+      unstable_pressDelay={motion.pressDelay}
+      accessible={false}
     >
       {children}
     </AnimatedPressable>

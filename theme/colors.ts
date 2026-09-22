@@ -3,6 +3,8 @@ export const colors = {
     primary: "#1a1a2e",
     /** Floating surfaces drawn above content (tab bar). */
     elevated: "rgba(34, 34, 62, 0.96)",
+    /** Log and code panels. */
+    code: "rgba(0, 0, 0, 0.3)",
   },
   primary: {
     default: "#6366f1",

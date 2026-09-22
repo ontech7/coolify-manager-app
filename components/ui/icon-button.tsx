@@ -1,4 +1,4 @@
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius } from "@/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCallback, useMemo } from "react";
@@ -105,10 +105,12 @@ export function IconButton({
         isDisabled && styles.disabled,
       ]}
       onPress={handlePress}
-      disabled={isDisabled}
+      // Not `disabled`: a disabled Pressable lets the touch fall through to a
+      // pressable parent (a tappable card would open). handlePress ignores it.
       hitSlop={hitSlop}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator size={size * 0.8} color={iconColor} />

@@ -1,4 +1,4 @@
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCallback, useEffect } from "react";
@@ -53,6 +53,7 @@ export function AutoRefreshButton({
     <Pressable
       style={[styles.button, enabled && styles.buttonActive]}
       onPress={handlePress}
+      hitSlop={spacing.md}
       accessibilityRole="switch"
       accessibilityState={{ checked: enabled }}
       accessibilityLabel={`${label} refresh`}

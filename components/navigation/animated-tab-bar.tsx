@@ -1,10 +1,16 @@
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, motion, radius, spacing } from "@/theme";
 import {
   BottomTabBarHeightCallbackContext,
   type BottomTabBarProps,
 } from "@react-navigation/bottom-tabs";
-import { useCallback, useContext, useEffect, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
   Keyboard,
   Platform,
@@ -42,13 +48,15 @@ export function AnimatedTabBar({
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
   const tabWidth = width / state.routes.length;
-  const bottom = Math.max(insets.bottom, spacing.xl);
+  // Float just above the home indicator / system navigation bar.
+  const bottom = insets.bottom > 0 ? insets.bottom + spacing.sm : spacing.xl;
 
   useEffect(() => {
     position.value = withSpring(state.index, motion.spring.snappy);
   }, [state.index, position]);
 
-  useEffect(() => {
+  // Before paint, so screens don't first render with the default height.
+  useLayoutEffect(() => {
     onHeightChange?.(TAB_BAR_HEIGHT + bottom);
   }, [onHeightChange, bottom]);
 
@@ -81,7 +89,11 @@ export function AnimatedTabBar({
   return (
     <View style={[styles.wrapper, { bottom }]}>
       <View style={styles.bar}>
-        <View style={styles.items} onLayout={handleLayout}>
+        <View
+          style={styles.items}
+          onLayout={handleLayout}
+          accessibilityRole="tablist"
+        >
           {width > 0 ? (
             <Animated.View
               style={[styles.indicator, { width: tabWidth }, indicatorStyle]}
@@ -155,7 +167,8 @@ const styles = StyleSheet.create({
     left: 0,
     height: TAB_ITEM_HEIGHT,
     borderRadius: radius.full,
-    backgroundColor: colors.primary.default,
+    // Darker violet keeps white 10px labels above 4.5:1 contrast.
+    backgroundColor: colors.primary.hover,
     pointerEvents: "none",
   },
 });

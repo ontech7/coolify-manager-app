@@ -58,6 +58,8 @@ export function TabBarItem({
       <Text
         style={[styles.label, { color }, focused && styles.labelFocused]}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {label}
       </Text>

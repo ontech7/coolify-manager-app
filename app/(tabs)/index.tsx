@@ -3,6 +3,7 @@ import { ResourceCard } from "@/components/resources/resource-card";
 import { StatusSummary } from "@/components/resources/status-summary";
 import { TabHeader } from "@/components/tab-header";
 import { AutoRefreshButton } from "@/components/ui/auto-refresh-button";
+import { Chip } from "@/components/ui/chip";
 import {
   EmptyState,
   NotConfiguredEmptyState,
@@ -11,16 +12,15 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { StaggeredItem } from "@/components/ui/staggered-item";
-import { Text } from "@/components/ui/text";
 import { useResources } from "@/hooks/useResources";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
-import { colors, motion, radius, spacing } from "@/theme";
+import { colors, motion, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 type FilterType = "all" | ResourceType;
@@ -213,6 +213,7 @@ export default function ResourcesScreen() {
         size={24}
         onPress={refresh}
         loading={isRefreshing}
+        accessibilityLabel="Refresh"
       />
     </TabHeader>
   );
@@ -221,7 +222,9 @@ export default function ResourcesScreen() {
     return (
       <View style={styles.container}>
         {header}
-        <SkeletonList />
+        {/* Same offset as the toolbar, so the list doesn't jump when loaded. */}
+        {isConfigured && <View style={styles.toolbar} />}
+        <SkeletonList style={isConfigured && styles.skeletonBelowToolbar} />
       </View>
     );
   }
@@ -253,6 +256,7 @@ export default function ResourcesScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="search"
+                maxFontSizeMultiplier={1.25}
                 containerStyle={styles.searchInput}
               />
               <IconButton
@@ -265,30 +269,21 @@ export default function ResourcesScreen() {
             </Animated.View>
           ) : (
             <Animated.View entering={toolbarEntering} style={styles.toolbarRow}>
-              <View style={styles.filters}>
-                {FILTERS.map(({ key, label }) => {
-                  const active = filter === key;
-                  return (
-                    <Pressable
-                      key={key}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() => setFilter(key)}
-                    >
-                      <Text
-                        style={[
-                          styles.filterText,
-                          active && styles.filterTextActive,
-                        ]}
-                      >
-                        {label} {counts[key]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <ScrollView
+                horizontal
+                style={styles.filters}
+                contentContainerStyle={styles.filtersContent}
+                showsHorizontalScrollIndicator={false}
+              >
+                {FILTERS.map(({ key, label }) => (
+                  <Chip
+                    key={key}
+                    label={`${label} ${counts[key]}`}
+                    active={filter === key}
+                    onPress={() => setFilter(key)}
+                  />
+                ))}
+              </ScrollView>
               <IconButton
                 name="search"
                 size={22}
@@ -334,37 +329,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
   },
   toolbar: {
-    height: 44,
+    // Touch-target height; grows with large system fonts.
+    minHeight: 44,
     marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     justifyContent: "center",
   },
   toolbarRow: {
+    flexGrow: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
   },
   filters: {
     flex: 1,
-    flexDirection: "row",
+    alignSelf: "stretch",
+  },
+  filtersContent: {
+    alignItems: "center",
     gap: spacing.sm,
   },
-  filterChip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.default,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary.background,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.text.muted,
-  },
-  filterTextActive: {
-    color: colors.primary.light,
+  skeletonBelowToolbar: {
+    paddingTop: spacing.md,
   },
   searchInput: {
     flex: 1,

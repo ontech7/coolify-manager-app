@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { ACTIVATE_ACTION } from "@/constants";
 import { colors, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { getResourceStatus } from "@/utils/status";
@@ -51,7 +52,14 @@ export function ResourceCard({
     <Card style={styles.card} onPress={isApplication ? handlePress : undefined}>
       <View style={styles.header}>
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text
+            style={styles.name}
+            numberOfLines={1}
+            accessibilityRole={isApplication ? "button" : "text"}
+            accessibilityHint={isApplication ? "Opens details" : undefined}
+            accessibilityActions={isApplication ? ACTIVATE_ACTION : undefined}
+            onAccessibilityAction={isApplication ? handlePress : undefined}
+          >
             {resource.name}
           </Text>
           <View style={styles.subtitleRow}>

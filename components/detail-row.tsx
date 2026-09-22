@@ -1,5 +1,5 @@
 import { Text } from "@/components/ui/text";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Clipboard from "expo-clipboard";
@@ -60,7 +60,11 @@ export function DetailRow({
             {value}
           </Text>
           {copyable && value ? (
-            <Pressable onPress={handleCopy} hitSlop={8} style={styles.copyButton}>
+            <Pressable
+              onPress={handleCopy}
+              hitSlop={8}
+              style={styles.copyButton}
+            >
               <MaterialIcons
                 name={copied ? "check" : "content-copy"}
                 size={16}

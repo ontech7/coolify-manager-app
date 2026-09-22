@@ -4,7 +4,6 @@
  */
 export const motion = {
   duration: {
-    fast: 150,
     normal: 220,
     slow: 320,
   },
@@ -13,10 +12,12 @@ export const motion = {
   /** Only the first N list items animate in; the rest appear instantly. */
   staggerMaxItems: 8,
   spring: {
-    /** Indicators and selections (tab bar pill, chips). */
+    /** Indicators and selections (tab bar pill and icons). */
     snappy: { damping: 20, stiffness: 240, mass: 0.8 },
     /** Press feedback on cards and buttons. */
     press: { damping: 18, stiffness: 320, mass: 0.6 },
   },
   pressScale: 0.98,
+  /** ms before press feedback starts, so a scroll doesn't flash it. */
+  pressDelay: 60,
 } as const;

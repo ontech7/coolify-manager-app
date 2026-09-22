@@ -8,45 +8,56 @@ interface TabHeaderProps {
   title: string;
   /** A plain string, or a custom element (e.g. a status summary). */
   subtitle?: ReactNode;
-  /** Right-side actions. */
+  /** Right-side actions, aligned with the title. */
   children?: ReactNode;
 }
 
-/** Large-title header shared by the list tabs. */
+/**
+ * Large-title header shared by the list tabs. The subtitle spans the full
+ * width under the title row, so a status summary doesn't wrap on small phones.
+ */
 export function TabHeader({ title, subtitle, children }: TabHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-      <View style={styles.titleGroup}>
-        <Text style={styles.title}>{title}</Text>
-        {typeof subtitle === "string" ? (
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        ) : (
-          subtitle
-        )}
+      <View style={styles.titleRow}>
+        <Text
+          style={styles.title}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          accessibilityRole="header"
+        >
+          {title}
+        </Text>
+        {children ? <View style={styles.actions}>{children}</View> : null}
       </View>
-      {children ? <View style={styles.actions}>{children}</View> : null}
+      {typeof subtitle === "string" ? (
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      ) : (
+        subtitle
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    gap: spacing.xs,
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.surface.border,
   },
-  titleGroup: {
-    flex: 1,
-    gap: spacing.xs,
-    marginRight: spacing.lg,
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.lg,
   },
   title: {
+    flexShrink: 1,
     fontSize: 28,
     fontWeight: "700",
     color: colors.text.primary,

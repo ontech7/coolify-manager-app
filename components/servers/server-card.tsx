@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { Text } from "@/components/ui/text";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
+import { ACTIVATE_ACTION } from "@/constants";
 import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
 import { useCallback, useState } from "react";
@@ -46,7 +47,14 @@ export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
     <Card style={styles.card} onPress={handlePress}>
       <View style={styles.header}>
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text
+            style={styles.name}
+            numberOfLines={1}
+            accessibilityRole="button"
+            accessibilityHint="Opens server details"
+            accessibilityActions={ACTIVATE_ACTION}
+            onAccessibilityAction={handlePress}
+          >
             {server.name}
           </Text>
           {server.description ? (
@@ -61,6 +69,7 @@ export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
           variant="default"
           onPress={handleValidate}
           loading={isValidating}
+          accessibilityLabel="Validate server"
         />
       </View>
 
@@ -72,7 +81,10 @@ export function ServerCard({ server, onValidate, onPress }: ServerCardProps) {
       </View>
 
       <View style={styles.pills}>
-        <HealthPill ok={reachable} label={reachable ? "Reachable" : "Unreachable"} />
+        <HealthPill
+          ok={reachable}
+          label={reachable ? "Reachable" : "Unreachable"}
+        />
         <HealthPill ok={usable} label={usable ? "Usable" : "Not usable"} />
       </View>
     </Card>

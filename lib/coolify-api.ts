@@ -1,4 +1,7 @@
-import { SERVER_ACTIONS_MIN_VERSION } from "@/constants";
+import {
+  POST_ACTIONS_MIN_VERSION,
+  SERVER_ACTIONS_MIN_VERSION,
+} from "@/constants";
 import type {
   ApplicationDeploymentsResponse,
   ApplicationLogsResponse,
@@ -281,7 +284,8 @@ export class CoolifyAPI {
 
   /** Coolify >= 4.2.0 only. */
   async getDatabaseLogs(uuid: string, lines: number = 100) {
-    return this.request<ApplicationLogsResponse>(
+    return this.requestSince<ApplicationLogsResponse>(
+      POST_ACTIONS_MIN_VERSION,
       `/databases/${uuid}/logs?lines=${lines}`,
     );
   }
@@ -306,7 +310,8 @@ export class CoolifyAPI {
     subServiceName: string,
     lines: number = 100,
   ) {
-    return this.request<ApplicationLogsResponse>(
+    return this.requestSince<ApplicationLogsResponse>(
+      POST_ACTIONS_MIN_VERSION,
       `/services/${uuid}/logs?sub_service_name=${encodeURIComponent(subServiceName)}&lines=${lines}`,
     );
   }

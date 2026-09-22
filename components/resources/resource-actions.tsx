@@ -1,5 +1,5 @@
 import { IconButton } from "@/components/ui/icon-button";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { isResourceRunning } from "@/utils/status";
@@ -161,6 +161,7 @@ export function ResourceActions({
         {isApplication && (
           <IconButton
             name="rocket"
+            accessibilityLabel="Deploy"
             size={14}
             variant="deploy"
             onPress={handleDeploy}
@@ -171,6 +172,7 @@ export function ResourceActions({
         {isService && (
           <IconButton
             name="cloud-download"
+            accessibilityLabel="Pull latest images"
             size={14}
             variant="deploy"
             onPress={handlePullLatest}
@@ -180,6 +182,7 @@ export function ResourceActions({
         )}
         <IconButton
           name="restart-alt"
+          accessibilityLabel="Restart"
           size={14}
           variant="restart"
           onPress={handleRestart}
@@ -188,6 +191,7 @@ export function ResourceActions({
         />
         <IconButton
           name={isRunning ? "stop" : "play-arrow"}
+          accessibilityLabel={isRunning ? "Stop" : "Start"}
           size={14}
           variant={isRunning ? "stop" : "start"}
           onPress={handleStartStop}
@@ -199,6 +203,7 @@ export function ResourceActions({
         {canViewLogs && (
           <IconButton
             name="article"
+            accessibilityLabel="View logs"
             size={14}
             variant="default"
             onPress={handleViewLogs}
@@ -208,6 +213,7 @@ export function ResourceActions({
         {isApplication && resource.fqdn && (
           <IconButton
             name="open-in-new"
+            accessibilityLabel="Open website"
             size={14}
             variant="default"
             onPress={handleOpenWebsite}

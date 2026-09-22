@@ -97,6 +97,7 @@ export default function DeploymentsScreen() {
         size={24}
         onPress={refresh}
         loading={isRefreshing}
+        accessibilityLabel="Refresh"
       />
     </TabHeader>
   );

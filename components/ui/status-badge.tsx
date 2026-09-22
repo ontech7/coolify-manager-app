@@ -127,7 +127,8 @@ export function StatusBadge({ status, style }: StatusBadgeProps) {
 
   return (
     <View style={containerStyle}>
-      <Animated.View style={[dotStyle, config.pulse && animatedDotStyle]} />
+      {/* Always attached, so opacity returns to 1 when the pulse stops. */}
+      <Animated.View style={[dotStyle, animatedDotStyle]} />
       <Text style={textStyle}>{config.label}</Text>
     </View>
   );
