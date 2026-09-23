@@ -2,13 +2,14 @@ import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { ACTIVATE_ACTION } from "@/constants";
 import { colors, radius, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
 import { formatRelativeTime } from "@/utils/date";
 import { canCancelDeployment, getDeploymentStatus } from "@/utils/status";
 import { truncateCommit, truncateMessage } from "@/utils/string";
 import { useCallback, useState } from "react";
-import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 
 interface DeploymentCardProps {
   deployment: DeploymentResponse;
@@ -60,14 +61,19 @@ export function DeploymentCard({
   }, [deployment.deployment_uuid, onCancel]);
 
   return (
-    <Card style={{ marginBottom: spacing.lg }}>
+    <Card style={styles.card} onPress={handlePress}>
       <View style={styles.header}>
         <View style={styles.info}>
-          <Pressable onPress={handlePress}>
-            <Text style={styles.appName} numberOfLines={1}>
-              {deployment.application_name}
-            </Text>
-          </Pressable>
+          <Text
+            style={styles.appName}
+            numberOfLines={1}
+            accessibilityRole="button"
+            accessibilityHint="Opens deployment details"
+            accessibilityActions={ACTIVATE_ACTION}
+            onAccessibilityAction={handlePress}
+          >
+            {deployment.application_name}
+          </Text>
           <View style={styles.meta}>
             <Text style={styles.date}>
               {formatRelativeTime(deployment.created_at)}
@@ -91,6 +97,7 @@ export function DeploymentCard({
               onPress={handleCancel}
               loading={isCancelling}
               disabled={isCancelling}
+              accessibilityLabel="Cancel deployment"
             />
           )}
           <StatusBadge status={status} />
@@ -107,6 +114,9 @@ export function DeploymentCard({
 }
 
 const styles = StyleSheet.create({
+  card: {
+    marginBottom: spacing.lg,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

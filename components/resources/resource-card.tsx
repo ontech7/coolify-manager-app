@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { ACTIVATE_ACTION } from "@/constants";
 import { colors, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { getResourceStatus } from "@/utils/status";
@@ -10,13 +11,15 @@ import { ResourceActions } from "./resource-actions";
 
 interface ResourceCardProps {
   resource: Resource;
+  supportsResourceLogs: boolean;
   onPress: (uuid: string) => void;
-  onDeploy: (uuid: string) => Promise<void>;
+  onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
   onStart: (uuid: string, type: ResourceType) => Promise<void>;
   onStop: (uuid: string, type: ResourceType) => Promise<void>;
-  onViewLogs: (uuid: string) => void;
+  onViewLogs: (resource: Resource) => void;
+  onOpenDeployment: (deploymentUuid: string) => void;
 }
 
 const typeChip: Record<ResourceType, { label: string; color: string }> = {
@@ -27,6 +30,7 @@ const typeChip: Record<ResourceType, { label: string; color: string }> = {
 
 export function ResourceCard({
   resource,
+  supportsResourceLogs,
   onPress,
   onDeploy,
   onPullLatest,
@@ -34,28 +38,39 @@ export function ResourceCard({
   onStart,
   onStop,
   onViewLogs,
+  onOpenDeployment,
 }: ResourceCardProps) {
-  const status = getResourceStatus(resource.status);
+  const { pending } = resource;
+  const status = pending ? pending.kind : getResourceStatus(resource.status);
   const chip = typeChip[resource.resourceType];
   const isApplication = resource.resourceType === "application";
+  const deploymentUuid =
+    pending?.kind === "deploying" ? pending.deploymentUuid : undefined;
 
   const handlePress = useCallback(() => {
     onPress(resource.uuid);
   }, [onPress, resource.uuid]);
 
+  const handleOpenDeployment = useCallback(() => {
+    if (deploymentUuid) onOpenDeployment(deploymentUuid);
+  }, [deploymentUuid, onOpenDeployment]);
+
   return (
-    <Card style={{ marginBottom: spacing.lg }}>
+    <Card style={styles.card} onPress={isApplication ? handlePress : undefined}>
       <View style={styles.header}>
         <View style={styles.info}>
-          <Pressable onPress={isApplication ? handlePress : undefined}>
-            <Text style={styles.name} numberOfLines={1}>
-              {resource.name}
-            </Text>
-          </Pressable>
+          <Text
+            style={styles.name}
+            numberOfLines={1}
+            accessibilityRole={isApplication ? "button" : "text"}
+            accessibilityHint={isApplication ? "Opens details" : undefined}
+            accessibilityActions={isApplication ? ACTIVATE_ACTION : undefined}
+            onAccessibilityAction={isApplication ? handlePress : undefined}
+          >
+            {resource.name}
+          </Text>
           <View style={styles.subtitleRow}>
-            <View
-              style={[styles.chip, { backgroundColor: `${chip.color}22` }]}
-            >
+            <View style={[styles.chip, { backgroundColor: `${chip.color}22` }]}>
               <Text style={[styles.chipText, { color: chip.color }]}>
                 {chip.label}
               </Text>
@@ -67,23 +82,43 @@ export function ResourceCard({
             ) : null}
           </View>
         </View>
-        <StatusBadge status={status} />
+        {deploymentUuid ? (
+          <Pressable
+            onPress={handleOpenDeployment}
+            hitSlop={spacing.lg}
+            accessibilityRole="button"
+            accessibilityLabel="Deploying"
+            accessibilityHint="Opens the live deployment logs"
+          >
+            <StatusBadge status={status} />
+          </Pressable>
+        ) : (
+          <StatusBadge status={status} />
+        )}
       </View>
 
+      {/* Keyed so a recycled cell doesn't carry an in-flight spinner over to
+          another resource. */}
       <ResourceActions
+        key={resource.uuid}
         resource={resource}
+        supportsResourceLogs={supportsResourceLogs}
         onDeploy={onDeploy}
         onPullLatest={onPullLatest}
         onRestart={onRestart}
         onStart={onStart}
         onStop={onStop}
         onViewLogs={onViewLogs}
+        onOpenDeployment={onOpenDeployment}
       />
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
+  card: {
+    marginBottom: spacing.lg,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

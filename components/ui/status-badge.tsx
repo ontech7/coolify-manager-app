@@ -1,13 +1,14 @@
 import { colors, radius, spacing } from "@/theme";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { Text } from "./text";
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { Text } from "./text";
 
 type StatusType =
   | "running:healthy"
@@ -15,6 +16,9 @@ type StatusType =
   | "exited:unhealthy"
   | "stopped"
   | "building"
+  | "deploying"
+  | "starting"
+  | "stopping"
   | "unknown"
   | "success"
   | "failed"
@@ -57,6 +61,24 @@ const statusConfig: Record<
     bgColor: colors.status.warningBg,
     pulse: true,
   },
+  deploying: {
+    label: "Deploying",
+    color: colors.status.warning,
+    bgColor: colors.status.warningBg,
+    pulse: true,
+  },
+  starting: {
+    label: "Starting",
+    color: colors.status.warning,
+    bgColor: colors.status.warningBg,
+    pulse: true,
+  },
+  stopping: {
+    label: "Stopping",
+    color: colors.status.error,
+    bgColor: colors.status.errorBg,
+    pulse: true,
+  },
   unknown: {
     label: "Unknown",
     color: colors.text.muted,
@@ -94,9 +116,16 @@ export function StatusBadge({ status, style }: StatusBadgeProps) {
   const config = statusConfig[status] || statusConfig.unknown;
   const opacity = useSharedValue(1);
 
-  if (config.pulse) {
-    opacity.value = withRepeat(withTiming(0.4, { duration: 750 }), -1, true);
-  }
+  // Start/stop the pulse only when the status changes. Starting it during
+  // render restarted the animation on every list refresh.
+  useEffect(() => {
+    if (config.pulse) {
+      opacity.set(withRepeat(withTiming(0.4, { duration: 750 }), -1, true));
+    } else {
+      cancelAnimation(opacity);
+      opacity.set(1);
+    }
+  }, [config.pulse, opacity]);
 
   const animatedDotStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -119,7 +148,8 @@ export function StatusBadge({ status, style }: StatusBadgeProps) {
 
   return (
     <View style={containerStyle}>
-      <Animated.View style={[dotStyle, config.pulse && animatedDotStyle]} />
+      {/* Always attached, so opacity returns to 1 when the pulse stops. */}
+      <Animated.View style={[dotStyle, animatedDotStyle]} />
       <Text style={textStyle}>{config.label}</Text>
     </View>
   );

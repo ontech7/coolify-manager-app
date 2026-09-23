@@ -31,8 +31,12 @@ Playbook for shipping `dev` to production.
      - **Changelog**: technical — Features / Fixes / Misc.
      - **Notes**: if needed.
 
-5. **Merge** — merge the PR when checks pass.
+5. **Merge** — merge the PR with a **real merge commit** (`gh pr merge --merge`) when checks pass. Do **NOT** squash: the release PR must preserve the full commit history on `main` (a squash produces a single "Release vX.Y.Z" commit with an unreadable body).
 
 6. **Tag** — create tag `vX.Y.Z` on the merge commit.
 
-7. **EAS Build** — remind the user: the EAS build is done manually (not by this skill).
+7. **GitHub Release** — create the release on GitHub (`gh release create vX.Y.Z`):
+   - Body: a **business-like summary** first (no technical jargon — what the user gains), then the technical changelog (Features / Fixes / Misc).
+   - Attach the APK asset if available (EAS build output).
+
+8. **EAS Build** — remind the user: the EAS build is done manually (not by this skill).

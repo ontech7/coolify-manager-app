@@ -1,16 +1,5 @@
 // General
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export interface ApiError {
-  message: string;
-  status?: number;
-}
-
 export interface TestConnectionResponse {
   success: boolean;
   error?: string;
@@ -18,9 +7,36 @@ export interface TestConnectionResponse {
   version?: string;
 }
 
+export interface MessageResponse {
+  message: string;
+}
+
 // Deploy
 
+/** Response of /deploy: one entry per deployed resource. */
 export interface DeployResponse {
+  deployments?: {
+    message: string;
+    resource_uuid: string;
+    deployment_uuid?: string;
+  }[];
+}
+
+// Rollback (Coolify >= 4.3.0)
+
+export interface RollbackImage {
+  tag: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface RollbackImagesResponse {
+  current: string | null;
+  images: RollbackImage[];
+}
+
+/** Actions that queue a deployment: app start/restart and rollback. */
+export interface QueuedDeploymentResponse {
   message: string;
   deployment_uuid?: string;
 }
@@ -116,6 +132,19 @@ export interface ServiceResponse {
   updated_at?: string;
 }
 
+/** A container inside a service (one of its applications or databases). */
+export interface ServiceContainer {
+  uuid: string;
+  name: string;
+  human_name?: string | null;
+  status?: string;
+}
+
+export interface ServiceDetailResponse extends ServiceResponse {
+  applications?: ServiceContainer[];
+  databases?: ServiceContainer[];
+}
+
 // Servers
 
 export interface ServerSettings {
@@ -143,6 +172,13 @@ export interface ServerResource {
   updated_at?: string;
 }
 
+/** Resources per health bucket, for header summaries. */
+export interface StatusCounts {
+  running: number;
+  unhealthy: number;
+  stopped: number;
+}
+
 // Unified resource (application | database | service)
 
 export type ResourceType = "application" | "database" | "service";
@@ -155,4 +191,14 @@ export interface Resource {
   subtitle?: string | null;
   /** Applications only — used for the "open website" action. */
   fqdn?: string | null;
+  /** Set after a start/stop/deploy from the app, until Coolify catches up. */
+  pending?: ResourcePending;
 }
+
+/**
+ * Local state for an action started from the app. Coolify keeps reporting the
+ * old status (e.g. "exited") while a deployment is queued or building.
+ */
+export type ResourcePending =
+  | { kind: "deploying"; deploymentUuid: string; since: number }
+  | { kind: "starting" | "stopping"; since: number };

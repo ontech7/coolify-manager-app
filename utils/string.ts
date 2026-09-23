@@ -21,3 +21,14 @@ export function truncateMessage(
   }
   return `${message.substring(0, maxLength)}...`;
 }
+
+/** The last `count` lines of a multi-line string. */
+export function lastLines(text: string, count: number) {
+  const lines = text.split("\n");
+  return lines.length > count ? lines.slice(-count).join("\n") : text;
+}
+
+/** Docker image tags are often full commit SHAs: shorten those like commits. */
+export function formatImageTag(tag: string) {
+  return /^[0-9a-f]{40}$/i.test(tag) ? truncateCommit(tag) : tag;
+}

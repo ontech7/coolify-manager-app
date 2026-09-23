@@ -1,5 +1,5 @@
 import { colors, radius, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useCallback, useState } from "react";
 import {
   Pressable,

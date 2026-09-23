@@ -1,16 +1,16 @@
 import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
-import { IconButton } from "@/components/ui/icon-button";
+import { ModalHeader } from "@/components/modal-header";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
 import type { ApplicationResponse } from "@/types/api";
 import { formatDateTime } from "@/utils/date";
 import { getApplicationStatus } from "@/utils/status";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,7 +21,7 @@ export default function ApplicationDetailsModal() {
 
   const insets = useSafeAreaInsets();
 
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, activeInstance } = useCoolifyApi();
 
   const [application, setApplication] = useState<ApplicationResponse | null>(
     null,
@@ -63,13 +63,28 @@ export default function ApplicationDetailsModal() {
     router.back();
   }, [router]);
 
+  const name = application?.name;
+
   const handleViewLogs = useCallback(() => {
-    router.push(`/application/${uuid}/logs` as Href);
-  }, [router, uuid]);
+    router.push({
+      pathname: "/logs/[uuid]",
+      params: { uuid, type: "application", name },
+    });
+  }, [router, uuid, name]);
 
   const handleViewDeployments = useCallback(() => {
-    router.push(`/application/${uuid}/deployments` as Href);
+    router.push({
+      pathname: "/application/[uuid]/deployments",
+      params: { uuid },
+    });
   }, [router, uuid]);
+
+  const handleRollback = useCallback(() => {
+    router.push({
+      pathname: "/application/[uuid]/rollback",
+      params: { uuid, name },
+    });
+  }, [router, uuid, name]);
 
   const fqdnUrls = useMemo(
     () =>
@@ -87,7 +102,8 @@ export default function ApplicationDetailsModal() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        <ModalHeader title="Application" onClose={handleClose} />
         <LoadingSpinner message="Loading application..." />
       </View>
     );
@@ -95,11 +111,8 @@ export default function ApplicationDetailsModal() {
 
   if (error || !application) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Error</Text>
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
+      <View style={styles.container}>
+        <ModalHeader title="Error" onClose={handleClose} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
             {error || "Application not found"}
@@ -113,12 +126,7 @@ export default function ApplicationDetailsModal() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {application.name}
-        </Text>
-        <IconButton name="close" size={24} onPress={handleClose} />
-      </View>
+      <ModalHeader title={application.name} onClose={handleClose} />
 
       <ScrollView
         style={styles.content}
@@ -132,22 +140,59 @@ export default function ApplicationDetailsModal() {
         </View>
 
         <View style={styles.actionsRow}>
-          <Pressable style={styles.actionButton} onPress={handleViewDeployments}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
+            onPress={handleViewDeployments}
+            accessibilityRole="button"
+          >
             <MaterialIcons
               name="history"
               size={20}
               color={colors.primary.light}
             />
-            <Text style={styles.actionButtonText}>History</Text>
+            <Text style={styles.actionButtonText} numberOfLines={1}>
+              History
+            </Text>
           </Pressable>
-          <Pressable style={styles.actionButton} onPress={handleViewLogs}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
+            onPress={handleViewLogs}
+            accessibilityRole="button"
+          >
             <MaterialIcons
               name="article"
               size={20}
               color={colors.primary.light}
             />
-            <Text style={styles.actionButtonText}>Logs</Text>
+            <Text style={styles.actionButtonText} numberOfLines={1}>
+              Logs
+            </Text>
           </Pressable>
+          {activeInstance?.apiMode !== "legacy" && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+              ]}
+              onPress={handleRollback}
+              accessibilityRole="button"
+            >
+              <MaterialIcons
+                name="settings-backup-restore"
+                size={20}
+                color={colors.primary.light}
+              />
+              <Text style={styles.actionButtonText} numberOfLines={1}>
+                Rollback
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         <DetailTable>
@@ -198,22 +243,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
-  },
   content: {
     flex: 1,
   },
@@ -241,7 +270,11 @@ const styles = StyleSheet.create({
     borderColor: colors.surface.border,
     borderRadius: radius.md,
   },
+  actionButtonPressed: {
+    backgroundColor: colors.surface.hover,
+  },
   actionButtonText: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: "500",
     color: colors.text.primary,

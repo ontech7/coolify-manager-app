@@ -5,5 +5,3 @@ export const radius = {
   xl: 12,
   full: 9999,
 } as const;
-
-export type Radius = typeof radius;

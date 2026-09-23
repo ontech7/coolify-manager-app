@@ -1,4 +1,4 @@
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
 import { useCallback } from "react";
 import {
@@ -71,7 +71,12 @@ export function Button({
               }
             />
           )}
-          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+          <Text
+            style={[styles.text, styles[`${variant}Text`]]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
           {adornmentEnd && (
             <ActivityIndicator
               size="small"
@@ -86,7 +91,12 @@ export function Button({
       ) : (
         <View style={styles.textWrapper}>
           {adornmentStart}
-          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+          <Text
+            style={[styles.text, styles[`${variant}Text`]]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
           {adornmentEnd}
         </View>
       )}
@@ -144,11 +154,13 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   textWrapper: {
+    flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
   },
   text: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: "500",
   },

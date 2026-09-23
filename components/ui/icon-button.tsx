@@ -1,6 +1,9 @@
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from "@react-native-vector-icons/material-icons";
 import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -10,18 +13,11 @@ import {
   type ViewStyle,
 } from "react-native";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
-
 type IconButtonVariant =
-  | "default"
-  | "deploy"
-  | "restart"
-  | "start"
-  | "stop"
-  | "ghost";
+  "default" | "deploy" | "restart" | "start" | "stop" | "ghost";
 
 interface IconButtonProps {
-  name: MaterialIconName;
+  name: MaterialIconsIconName;
   size?: number;
   color?: string;
   variant?: IconButtonVariant;
@@ -30,6 +26,7 @@ interface IconButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   hitSlop?: PressableProps["hitSlop"];
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<
@@ -72,6 +69,7 @@ export function IconButton({
   disabled = false,
   style,
   hitSlop = 8,
+  accessibilityLabel,
 }: IconButtonProps) {
   const handlePress = useCallback(
     (event: Parameters<NonNullable<PressableProps["onPress"]>>[0]) => {
@@ -103,8 +101,12 @@ export function IconButton({
         isDisabled && styles.disabled,
       ]}
       onPress={handlePress}
-      disabled={isDisabled}
+      // Not `disabled`: a disabled Pressable lets the touch fall through to a
+      // pressable parent (a tappable card would open). handlePress ignores it.
       hitSlop={hitSlop}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator size={size * 0.8} color={iconColor} />

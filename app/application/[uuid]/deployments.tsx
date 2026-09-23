@@ -1,16 +1,22 @@
 import { DeploymentCard } from "@/components/deployments/deployment-card";
 import { ErrorState } from "@/components/error-state";
+import { ModalHeader } from "@/components/modal-header";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
 import { useApplicationDeployments } from "@/hooks/useApplicationDeployments";
 import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { FlashList } from "@shopify/flash-list";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback } from "react";
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ApplicationDeploymentsModal() {
@@ -39,7 +45,10 @@ export default function ApplicationDeploymentsModal() {
 
   const handleDeploymentPress = useCallback(
     (deploymentUuid: string) => {
-      router.push(`/deployment/${deploymentUuid}` as Href);
+      router.push({
+        pathname: "/deployment/[uuid]",
+        params: { uuid: deploymentUuid },
+      });
     },
     [router],
   );
@@ -90,20 +99,18 @@ export default function ApplicationDeploymentsModal() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {appName ? `${appName} — History` : "Deployment History"}
-        </Text>
-        <View style={styles.headerActions}>
-          <IconButton
-            name="refresh"
-            size={24}
-            onPress={refresh}
-            loading={isRefreshing}
-          />
-          <IconButton name="close" size={24} onPress={handleClose} />
-        </View>
-      </View>
+      <ModalHeader
+        title={appName ? `${appName} — History` : "Deployment History"}
+        onClose={handleClose}
+      >
+        <IconButton
+          name="refresh"
+          size={24}
+          onPress={refresh}
+          loading={isRefreshing}
+          accessibilityLabel="Refresh history"
+        />
+      </ModalHeader>
 
       {isLoading ? (
         <LoadingSpinner message="Loading deployment history..." />
@@ -142,27 +149,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
   },
   list: {
     padding: spacing.xl,

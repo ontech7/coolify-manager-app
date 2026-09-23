@@ -1,5 +1,5 @@
 import { IconButton } from "@/components/ui/icon-button";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { isResourceRunning } from "@/utils/status";
@@ -8,40 +8,52 @@ import { Alert, Linking, StyleSheet, View } from "react-native";
 
 interface ResourceActionsProps {
   resource: Resource;
-  onDeploy: (uuid: string) => Promise<void>;
+  /** Database/service logs need Coolify >= 4.2.0; app logs always work. */
+  supportsResourceLogs: boolean;
+  /** Resolves with the queued deployment's UUID, when Coolify returns one. */
+  onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
   onStart: (uuid: string, type: ResourceType) => Promise<void>;
   onStop: (uuid: string, type: ResourceType) => Promise<void>;
-  onViewLogs: (uuid: string) => void;
+  onViewLogs: (resource: Resource) => void;
+  onOpenDeployment: (deploymentUuid: string) => void;
 }
 
 type ActionType = "deploy" | "pull" | "restart" | "start" | "stop";
 
 export function ResourceActions({
   resource,
+  supportsResourceLogs,
   onDeploy,
   onPullLatest,
   onRestart,
   onStart,
   onStop,
   onViewLogs,
+  onOpenDeployment,
 }: ResourceActionsProps) {
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
 
   const isApplication = resource.resourceType === "application";
   const isService = resource.resourceType === "service";
   const isRunning = isResourceRunning(resource.status);
+  // Coolify still reports the old status while an action is underway: block
+  // actions that would queue it again. Stop stays available unless stopping.
+  const isPending = resource.pending !== undefined;
+  const isStopping = resource.pending?.kind === "stopping";
+  const canViewLogs = isApplication || supportsResourceLogs;
 
   const handleAction = useCallback(
-    async (
+    async <T,>(
       action: ActionType,
-      handler: (uuid: string, type: ResourceType) => Promise<void>,
-    ) => {
+      handler: (uuid: string, type: ResourceType) => Promise<T>,
+    ): Promise<T | undefined> => {
       setLoadingAction(action);
       try {
-        await handler(resource.uuid, resource.resourceType);
+        const result = await handler(resource.uuid, resource.resourceType);
         triggerHaptic("success");
+        return result;
       } catch (error) {
         triggerHaptic("error");
         Alert.alert(
@@ -50,6 +62,7 @@ export function ResourceActions({
             ? error.message
             : `Failed to ${action} ${resource.resourceType}`,
         );
+        return undefined;
       } finally {
         setLoadingAction(null);
       }
@@ -57,20 +70,36 @@ export function ResourceActions({
     [resource.uuid, resource.resourceType],
   );
 
+  const runDeploy = useCallback(
+    async (force: boolean) => {
+      const deploymentUuid = await handleAction("deploy", (uuid) =>
+        onDeploy(uuid, force),
+      );
+      if (!deploymentUuid) return;
+
+      Alert.alert("Deployment queued", `"${resource.name}" is deploying.`, [
+        { text: "OK", style: "cancel" },
+        {
+          text: "Watch live",
+          onPress: () => onOpenDeployment(deploymentUuid),
+        },
+      ]);
+    },
+    [handleAction, onDeploy, onOpenDeployment, resource.name],
+  );
+
   const handleDeploy = useCallback(() => {
     triggerHaptic("warning");
     Alert.alert(
       "Deploy Application",
-      `Are you sure you want to deploy "${resource.name}"?`,
+      `Deploy "${resource.name}"? Force rebuild skips the build cache.`,
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Deploy",
-          onPress: () => handleAction("deploy", () => onDeploy(resource.uuid)),
-        },
+        { text: "Force Rebuild", onPress: () => runDeploy(true) },
+        { text: "Deploy", onPress: () => runDeploy(false) },
       ],
     );
-  }, [resource.name, resource.uuid, handleAction, onDeploy]);
+  }, [resource.name, runDeploy]);
 
   const handlePullLatest = useCallback(() => {
     triggerHaptic("warning");
@@ -117,8 +146,8 @@ export function ResourceActions({
   }, [isRunning, resource.name, handleAction, onStart, onStop]);
 
   const handleViewLogs = useCallback(() => {
-    onViewLogs(resource.uuid);
-  }, [resource.uuid, onViewLogs]);
+    onViewLogs(resource);
+  }, [resource, onViewLogs]);
 
   const handleOpenWebsite = useCallback(() => {
     if (resource.fqdn) {
@@ -136,44 +165,51 @@ export function ResourceActions({
         {isApplication && (
           <IconButton
             name="rocket"
+            accessibilityLabel="Deploy"
             size={14}
             variant="deploy"
             onPress={handleDeploy}
             loading={loadingAction === "deploy"}
-            disabled={loadingAction !== null}
+            disabled={loadingAction !== null || isPending}
           />
         )}
         {isService && (
           <IconButton
             name="cloud-download"
+            accessibilityLabel="Pull latest images"
             size={14}
             variant="deploy"
             onPress={handlePullLatest}
             loading={loadingAction === "pull"}
-            disabled={loadingAction !== null}
+            disabled={loadingAction !== null || isPending}
           />
         )}
         <IconButton
           name="restart-alt"
+          accessibilityLabel="Restart"
           size={14}
           variant="restart"
           onPress={handleRestart}
           loading={loadingAction === "restart"}
-          disabled={loadingAction !== null || !isRunning}
+          disabled={loadingAction !== null || !isRunning || isPending}
         />
         <IconButton
           name={isRunning ? "stop" : "play-arrow"}
+          accessibilityLabel={isRunning ? "Stop" : "Start"}
           size={14}
           variant={isRunning ? "stop" : "start"}
           onPress={handleStartStop}
           loading={loadingAction === "start" || loadingAction === "stop"}
-          disabled={loadingAction !== null}
+          disabled={
+            loadingAction !== null || isStopping || (isPending && !isRunning)
+          }
         />
       </View>
       <View style={styles.actionsRight}>
-        {isApplication && (
+        {canViewLogs && (
           <IconButton
             name="article"
+            accessibilityLabel="View logs"
             size={14}
             variant="default"
             onPress={handleViewLogs}
@@ -183,6 +219,7 @@ export function ResourceActions({
         {isApplication && resource.fqdn && (
           <IconButton
             name="open-in-new"
+            accessibilityLabel="Open website"
             size={14}
             variant="default"
             onPress={handleOpenWebsite}

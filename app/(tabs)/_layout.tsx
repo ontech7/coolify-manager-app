@@ -1,28 +1,66 @@
-import { HapticTab } from "@/components/haptic-tab";
-import { colors } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { AnimatedTabBar } from "@/components/navigation/animated-tab-bar";
+import { colors, motion } from "@/theme";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
+import type {
+  BottomTabBarProps,
+  BottomTabNavigationOptions,
+} from "expo-router/js-tabs";
 import { Tabs } from "expo-router";
+import { Easing } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
+
+const renderTabBar = (props: BottomTabBarProps) => (
+  <AnimatedTabBar {...props} />
+);
+
+/**
+ * Cross-fade with a short horizontal shift toward the tab's side. Driven by
+ * the native driver, so it costs nothing on the JS thread.
+ */
+const tabTransition: BottomTabNavigationOptions = {
+  transitionSpec: {
+    animation: "timing",
+    config: {
+      duration: motion.duration.normal,
+      easing: Easing.out(Easing.cubic),
+    },
+  },
+  sceneStyleInterpolator: ({ current }) => ({
+    sceneStyle: {
+      opacity: current.progress.interpolate({
+        inputRange: [-1, 0, 1],
+        outputRange: [0, 1, 0],
+      }),
+      transform: [
+        {
+          translateX: current.progress.interpolate({
+            inputRange: [-1, 0, 1],
+            outputRange: [-24, 0, 24],
+          }),
+        },
+      ],
+    },
+  }),
+};
 
 export default function TabLayout() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <Tabs
+      tabBar={renderTabBar}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary.light,
-        tabBarInactiveTintColor: colors.text.muted,
-        tabBarStyle: {
-          backgroundColor: colors.background.primary,
-          borderTopColor: colors.surface.border,
-        },
         headerShown: false,
-        tabBarButton: HapticTab,
+        sceneStyle: { backgroundColor: colors.background.primary },
+        ...(reduceMotion ? null : tabTransition),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Resources",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons size={24} name="layers" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons size={size} name="layers" color={color} />
           ),
         }}
       />
@@ -30,8 +68,8 @@ export default function TabLayout() {
         name="deployments"
         options={{
           title: "Deployments",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons size={24} name="rocket" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons size={size} name="rocket" color={color} />
           ),
         }}
       />
@@ -39,8 +77,8 @@ export default function TabLayout() {
         name="servers"
         options={{
           title: "Servers",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons size={24} name="dns" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons size={size} name="dns" color={color} />
           ),
         }}
       />
@@ -48,8 +86,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons size={24} name="settings" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons size={size} name="settings" color={color} />
           ),
         }}
       />

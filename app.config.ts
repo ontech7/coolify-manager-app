@@ -6,13 +6,12 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? "Coolify Manager (Dev)" : "Coolify Manager",
   slug: "coolifyManager",
-  version: "1.3.0",
+  version: "1.4.0",
   githubUrl: "https://github.com/ontech7/coolify-manager-app",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: IS_DEV ? "coolifymanager-dev" : "coolifymanager",
-  userInterfaceStyle: "automatic",
-  newArchEnabled: true,
+  userInterfaceStyle: "dark",
   ios: {
     supportsTablet: true,
     bundleIdentifier: IS_DEV
@@ -24,7 +23,6 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
       backgroundImage: "./assets/images/adaptive-icon-bg.png",
       foregroundImage: "./assets/images/adaptive-icon.png",
     },
-    edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: IS_DEV
       ? "com.ontech7.coolifyManager.dev"
@@ -36,6 +34,9 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    "expo-font",
+    ["expo-secure-store", { faceIDPermission: false }],
+    "expo-status-bar",
     [
       "expo-build-properties",
       {

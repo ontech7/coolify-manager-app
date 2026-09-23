@@ -1,23 +1,24 @@
 import { Card } from "@/components/ui/card";
-import { IconButton } from "@/components/ui/icon-button";
+import { ModalHeader } from "@/components/modal-header";
 import { Text } from "@/components/ui/text";
 import { colors, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from "@react-native-vector-icons/material-icons";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COOLIFY_URL = "https://coolify.io";
-
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 function Section({
   icon,
   title,
   children,
 }: {
-  icon: MaterialIconName;
+  icon: MaterialIconsIconName;
   title: string;
   children: React.ReactNode;
 }) {
@@ -40,16 +41,18 @@ export default function DisclaimerScreen() {
     router.back();
   }, [router]);
 
-  const handleOpenCoolify = useCallback(() => {
-    Linking.openURL(COOLIFY_URL);
+  const handleOpenCoolify = useCallback(async () => {
+    const supported = await Linking.canOpenURL(COOLIFY_URL);
+    if (supported) {
+      await Linking.openURL(COOLIFY_URL);
+    } else {
+      Alert.alert(`Cannot open this URL: ${COOLIFY_URL}`);
+    }
   }, []);
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.headerTitle}>Disclaimer</Text>
-        <IconButton name="close" size={24} onPress={handleClose} />
-      </View>
+      <ModalHeader title="Disclaimer" onClose={handleClose} />
 
       <ScrollView
         style={styles.content}
@@ -77,11 +80,17 @@ export default function DisclaimerScreen() {
           team.
         </Section>
 
-        <Text style={styles.link} onPress={handleOpenCoolify}>
+        <Text
+          style={styles.link}
+          onPress={handleOpenCoolify}
+          accessibilityRole="link"
+        >
           Learn more at coolify.io
         </Text>
 
-        <Text style={styles.footer}>Made with ❤️ for the Coolify community</Text>
+        <Text style={styles.footer}>
+          Made with ❤️ for the Coolify community
+        </Text>
       </ScrollView>
     </View>
   );
@@ -91,22 +100,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginRight: spacing.lg,
   },
   content: {
     flex: 1,

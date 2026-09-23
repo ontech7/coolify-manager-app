@@ -1,5 +1,4 @@
 import * as Haptics from "expo-haptics";
-import { useCallback } from "react";
 import { Platform } from "react-native";
 
 type HapticType =
@@ -23,18 +22,6 @@ const hapticMap: Record<HapticType, () => Promise<void>> = {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   selection: () => Haptics.selectionAsync(),
 };
-
-export function useHaptics() {
-  const trigger = useCallback(async (type: HapticType = "light") => {
-    if (Platform.OS === "web") return;
-
-    try {
-      await hapticMap[type]();
-    } catch {}
-  }, []);
-
-  return { trigger };
-}
 
 export async function triggerHaptic(type: HapticType = "light"): Promise<void> {
   if (Platform.OS === "web") return;
