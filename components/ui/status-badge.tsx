@@ -99,10 +99,10 @@ export function StatusBadge({ status, style }: StatusBadgeProps) {
   // render restarted the animation on every list refresh.
   useEffect(() => {
     if (config.pulse) {
-      opacity.value = withRepeat(withTiming(0.4, { duration: 750 }), -1, true);
+      opacity.set(withRepeat(withTiming(0.4, { duration: 750 }), -1, true));
     } else {
       cancelAnimation(opacity);
-      opacity.value = 1;
+      opacity.set(1);
     }
   }, [config.pulse, opacity]);
 

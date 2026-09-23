@@ -12,7 +12,7 @@ import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useDeployments } from "@/hooks/useDeployments";
 import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback } from "react";

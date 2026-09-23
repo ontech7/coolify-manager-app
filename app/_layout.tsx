@@ -1,7 +1,6 @@
 import { CoolifyApiProvider } from "@/providers/coolify-api-provider";
 import { colors } from "@/theme";
-import { DarkTheme, ThemeProvider, type Theme } from "@react-navigation/native";
-import { Stack } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider, type Theme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 

@@ -4,7 +4,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import type {
   BottomTabBarProps,
   BottomTabNavigationOptions,
-} from "@react-navigation/bottom-tabs";
+} from "expo-router/js-tabs";
 import { Tabs } from "expo-router";
 import { Easing } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";

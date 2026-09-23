@@ -11,7 +11,7 @@ import { StaggeredItem } from "@/components/ui/staggered-item";
 import { useServers } from "@/hooks/useServers";
 import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useMemo } from "react";

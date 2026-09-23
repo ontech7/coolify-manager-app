@@ -121,15 +121,15 @@ export class CoolifyAPI {
     } catch (error) {
       clearTimeout(timeoutId);
 
+      // expo/fetch rejects an aborted request with a generic FetchError,
+      // not an AbortError, so check the signal instead.
+      if (controller.signal.aborted) {
+        throw new Error("Connection timeout. Server took too long to respond.");
+      }
       if (error instanceof Error) {
-        if (error.name === "AbortError") {
-          throw new Error(
-            "Connection timeout. Server took too long to respond.",
-          );
-        }
         if (
           error.message === "Failed to fetch" ||
-          error.message === "Network request failed"
+          error.message.startsWith("fetch failed")
         ) {
           throw new Error(
             "Unable to connect to server. Please check URL and connection.",

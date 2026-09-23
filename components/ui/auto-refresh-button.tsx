@@ -29,14 +29,16 @@ export function AutoRefreshButton({
 
   useEffect(() => {
     if (enabled) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 1000, easing: Easing.linear }),
-        -1,
-        false,
+      rotation.set(
+        withRepeat(
+          withTiming(360, { duration: 1000, easing: Easing.linear }),
+          -1,
+          false,
+        ),
       );
     } else {
       cancelAnimation(rotation);
-      rotation.value = 0;
+      rotation.set(0);
     }
   }, [enabled, rotation]);
 

@@ -4,7 +4,7 @@
 
 Coolify Manager is a React Native app (Expo SDK) to manage Coolify instances from your phone: applications, databases, services, servers, and deployments.
 
-**Stack**: Expo SDK 54 · React Native 0.81 · React 19.1 · TypeScript 5.9 (strict) · expo-router (file-based routing) · EAS Build.
+**Stack**: Expo SDK 57 · React Native 0.86 · React 19.2 · TypeScript 6.0 (strict) · expo-router (file-based routing) · EAS Build.
 
 ## Architecture
 
