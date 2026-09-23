@@ -1,4 +1,4 @@
-import { PENDING_ACTION_TIMEOUT } from "@/constants";
+import { PENDING_ACTION_TIMEOUT, PENDING_DEPLOY_TIMEOUT } from "@/constants";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import type {
@@ -13,6 +13,8 @@ import { isResourceRunning } from "@/utils/status";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type PendingMap = Record<string, ResourcePending>;
+
+const NO_PENDING: PendingMap = {};
 
 function databaseToResource(db: DatabaseResponse): Resource {
   return {
@@ -37,14 +39,16 @@ function serviceToResource(svc: ServiceResponse): Resource {
 /**
  * Drops the pending entries Coolify has caught up with: a deployment that is no
  * longer queued/in progress, a start that now reports running, a stop that no
- * longer does (or either timed out). `activeDeployments` is null when unknown,
- * which keeps deployments.
+ * longer does (or any of them timed out). `activeDeployments` is null when
+ * unknown, which keeps deployments. Entries added after `fetchStartedAt` are
+ * kept: this fetch's data predates them.
  * Returns the same object when nothing changed, to skip a re-render.
  */
 function prunePending(
   pending: PendingMap,
   resources: Resource[],
   activeDeployments: DeploymentResponse[] | null,
+  fetchStartedAt: number,
 ): PendingMap {
   const activeUuids = activeDeployments
     ? new Set(activeDeployments.map((d) => d.deployment_uuid))
@@ -55,8 +59,12 @@ function prunePending(
 
   for (const [uuid, entry] of Object.entries(pending)) {
     let done: boolean;
-    if (entry.kind === "deploying") {
-      done = activeUuids !== null && !activeUuids.has(entry.deploymentUuid);
+    if (entry.since > fetchStartedAt) {
+      done = false;
+    } else if (entry.kind === "deploying") {
+      done =
+        now - entry.since > PENDING_DEPLOY_TIMEOUT ||
+        (activeUuids !== null && !activeUuids.has(entry.deploymentUuid));
     } else {
       // Missing when its list failed to load this time: keep waiting.
       const resource = resources.find((r) => r.uuid === uuid);
@@ -88,7 +96,7 @@ export function useResources() {
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   // Mirrored in a ref so fetchResources can read it without re-creating
   // itself (and restarting auto-refresh) on every change.
-  const [pending, setPending] = useState<PendingMap>({});
+  const [pending, setPending] = useState(NO_PENDING);
   const pendingRef = useRef(pending);
 
   const updatePending = useCallback(
@@ -119,6 +127,7 @@ export function useResources() {
         setIsRefreshing(true);
       }
 
+      const fetchStartedAt = Date.now();
       // Only poll deployments while one started from the app is pending.
       const hasDeploying = Object.values(pendingRef.current).some(
         (p) => p.kind === "deploying",
@@ -159,7 +168,10 @@ export function useResources() {
           prunePending(
             prev,
             merged,
-            active.status === "fulfilled" ? active.value : null,
+            active.status === "fulfilled" && Array.isArray(active.value)
+              ? active.value
+              : null,
+            fetchStartedAt,
           ),
         );
 
@@ -202,7 +214,11 @@ export function useResources() {
       if (type === "application") {
         const deploymentUuid = await api.startApplication(uuid);
         if (deploymentUuid) {
-          markPending(uuid, { kind: "deploying", deploymentUuid });
+          markPending(uuid, {
+            kind: "deploying",
+            deploymentUuid,
+            since: Date.now(),
+          });
         }
       } else {
         if (type === "database") await api.startDatabase(uuid);
@@ -232,7 +248,11 @@ export function useResources() {
       if (type === "application") {
         const deploymentUuid = await api.restartApplication(uuid);
         if (deploymentUuid) {
-          markPending(uuid, { kind: "deploying", deploymentUuid });
+          markPending(uuid, {
+            kind: "deploying",
+            deploymentUuid,
+            since: Date.now(),
+          });
         }
       } else if (type === "database") await api.restartDatabase(uuid);
       else await api.restartService(uuid);
@@ -248,7 +268,11 @@ export function useResources() {
       const result = await api.deployApplication(uuid, force);
       const deploymentUuid = result.deployments?.[0]?.deployment_uuid;
       if (deploymentUuid) {
-        markPending(uuid, { kind: "deploying", deploymentUuid });
+        markPending(uuid, {
+            kind: "deploying",
+            deploymentUuid,
+            since: Date.now(),
+          });
       }
       await fetchResources();
       return deploymentUuid;
@@ -266,6 +290,9 @@ export function useResources() {
   );
 
   useEffect(() => {
+    // Pending actions belong to the previous instance.
+    updatePending(() => NO_PENDING);
+
     if (!isConfigured) {
       setResources([]);
       setError(null);
@@ -278,7 +305,7 @@ export function useResources() {
       setIsLoading(true);
       fetchResources();
     }
-  }, [api, isConfigured, fetchResources]);
+  }, [api, isConfigured, fetchResources, updatePending]);
 
   useAutoRefresh(fetchResources, autoRefreshEnabled && isConfigured);
 

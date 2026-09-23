@@ -11,6 +11,12 @@ export const LOG_LINES = 500;
  */
 export const PENDING_ACTION_TIMEOUT = 120000; // 2 minutes
 
+/**
+ * Safety net for "Deploying" when Coolify's deployment list can't be read:
+ * builds can be long, so this is much larger than PENDING_ACTION_TIMEOUT.
+ */
+export const PENDING_DEPLOY_TIMEOUT = 1800000; // 30 minutes
+
 /** Screen-reader "double tap" on a card title opens the card. */
 export const ACTIVATE_ACTION = [{ name: "activate" as const }];
 

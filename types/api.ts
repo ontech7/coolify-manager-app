@@ -200,5 +200,5 @@ export interface Resource {
  * old status (e.g. "exited") while a deployment is queued or building.
  */
 export type ResourcePending =
-  | { kind: "deploying"; deploymentUuid: string }
+  | { kind: "deploying"; deploymentUuid: string; since: number }
   | { kind: "starting" | "stopping"; since: number };

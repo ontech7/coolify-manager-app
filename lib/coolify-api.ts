@@ -187,11 +187,11 @@ export class CoolifyAPI {
 
   /** Returns the queued deployment's UUID, when Coolify reports one. */
   async startApplication(uuid: string) {
-    const result = await this.request<QueuedDeploymentResponse>(
+    const result = await this.request<QueuedDeploymentResponse | null>(
       `/applications/${uuid}/start`,
       { method: this.actionMethod() },
     );
-    return result.deployment_uuid;
+    return result?.deployment_uuid;
   }
 
   async stopApplication(uuid: string) {
@@ -202,11 +202,11 @@ export class CoolifyAPI {
 
   /** Returns the queued deployment's UUID, when Coolify reports one. */
   async restartApplication(uuid: string) {
-    const result = await this.request<QueuedDeploymentResponse>(
+    const result = await this.request<QueuedDeploymentResponse | null>(
       `/applications/${uuid}/restart`,
       { method: this.actionMethod() },
     );
-    return result.deployment_uuid;
+    return result?.deployment_uuid;
   }
 
   /** `force` rebuilds without the Docker build cache. */
