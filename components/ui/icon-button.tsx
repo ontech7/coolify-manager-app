@@ -1,6 +1,9 @@
 import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from "@react-native-vector-icons/material-icons";
 import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -10,18 +13,11 @@ import {
   type ViewStyle,
 } from "react-native";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
-
 type IconButtonVariant =
-  | "default"
-  | "deploy"
-  | "restart"
-  | "start"
-  | "stop"
-  | "ghost";
+  "default" | "deploy" | "restart" | "start" | "stop" | "ghost";
 
 interface IconButtonProps {
-  name: MaterialIconName;
+  name: MaterialIconsIconName;
   size?: number;
   color?: string;
   variant?: IconButtonVariant;

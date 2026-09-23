@@ -1,6 +1,6 @@
 import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useCallback, useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {

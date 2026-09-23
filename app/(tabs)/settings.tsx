@@ -13,7 +13,7 @@ import {
   validateServerUrl,
 } from "@/utils/validation";
 import { isVersionAtLeast } from "@/utils/version";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";

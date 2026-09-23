@@ -9,7 +9,7 @@ import { colors, radius, spacing } from "@/theme";
 import type { RollbackImage } from "@/types/api";
 import { formatDockerDate } from "@/utils/date";
 import { formatImageTag } from "@/utils/string";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {

@@ -1,14 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { colors, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from "@react-native-vector-icons/material-icons";
 import { StyleSheet, View } from "react-native";
-
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 type EmptyStateActionVariant = "primary" | "secondary";
 
 interface EmptyStateProps {
-  icon: MaterialIconName;
+  icon: MaterialIconsIconName;
   title: string;
   message: string;
   actionLabel?: string;

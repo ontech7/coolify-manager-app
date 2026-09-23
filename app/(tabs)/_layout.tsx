@@ -1,6 +1,6 @@
 import { AnimatedTabBar } from "@/components/navigation/animated-tab-bar";
 import { colors, motion } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import type {
   BottomTabBarProps,
   BottomTabNavigationOptions,

@@ -17,7 +17,7 @@
     "clean": "rm -rf android ios dist"
   },
   "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
+    "@react-native-vector-icons/material-icons": "^13.1.4",
     "@shopify/flash-list": "2.0.2",
     "date-fns": "^4.1.0",
     "expo": "~57.0.24",
