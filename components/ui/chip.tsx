@@ -14,7 +14,8 @@ export function Chip({ label, active, onPress }: ChipProps) {
     <Pressable
       style={[styles.chip, active && styles.chipActive]}
       onPress={onPress}
-      hitSlop={{ top: spacing.md, bottom: spacing.md }}
+      // ~24pt tall: extend vertically to a ~44pt target.
+      hitSlop={{ top: 10, bottom: 10 }}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >

@@ -143,8 +143,12 @@ export default function LogsViewerModal() {
       setLogs("");
       setError(null);
       setIsLoading(true);
+      // Follow the new container's logs even if the previous one was scrolled
+      // up. The ScrollView unmounts while loading: what matters is the reset
+      // follow flag, so onContentSizeChange scrolls once the new logs arrive.
+      scrollToEnd();
     },
-    [container],
+    [container, scrollToEnd],
   );
 
   return (

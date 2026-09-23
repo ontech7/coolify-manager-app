@@ -1,6 +1,6 @@
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import type { DeploymentResponse } from "@/types/api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_SIZE = 15;
 
@@ -13,7 +13,7 @@ type FetchMode = "initial" | "refresh" | "more";
  * The global /deployments endpoint only returns currently running ones.
  */
 export function useApplicationDeployments(uuid: string | undefined) {
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, isInitializing } = useCoolifyApi();
 
   const [deployments, setDeployments] = useState<DeploymentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,11 +21,15 @@ export function useApplicationDeployments(uuid: string | undefined) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest request may update state: a refresh supersedes a page
+  // still loading, and an instance switch supersedes everything.
+  const requestIdRef = useRef(0);
 
   const fetchPage = useCallback(
     async (skip: number, mode: FetchMode) => {
       if (!api || !uuid) return;
 
+      const requestId = ++requestIdRef.current;
       if (mode === "refresh") {
         setIsRefreshing(true);
       } else if (mode === "more") {
@@ -36,24 +40,39 @@ export function useApplicationDeployments(uuid: string | undefined) {
 
       try {
         const result = await api.getDeploymentsByApp(uuid, skip, PAGE_SIZE);
+        if (requestId !== requestIdRef.current) return;
         const batch = result.deployments ?? [];
         setHasMore(skip + batch.length < (result.count ?? 0));
-        setDeployments((prev) => (mode === "more" ? [...prev, ...batch] : batch));
+        setDeployments((prev) =>
+          mode === "more" ? [...prev, ...batch] : batch,
+        );
         setError(null);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(
           err instanceof Error ? err.message : "Failed to fetch deployments",
         );
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
-        setIsLoadingMore(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+          setIsLoadingMore(false);
+        }
       }
     },
     [api, uuid],
   );
 
   useEffect(() => {
+    // In-flight requests belong to the previous instance.
+    requestIdRef.current++;
+
+    // Still reading the config: show the spinner, not "Not configured".
+    if (isInitializing) {
+      setIsLoading(true);
+      return;
+    }
+
     if (!isConfigured) {
       setDeployments([]);
       setError(null);
@@ -66,7 +85,7 @@ export function useApplicationDeployments(uuid: string | undefined) {
       setIsLoading(true);
       fetchPage(0, "initial");
     }
-  }, [api, uuid, isConfigured, fetchPage]);
+  }, [api, uuid, isConfigured, isInitializing, fetchPage]);
 
   const refresh = useCallback(() => fetchPage(0, "refresh"), [fetchPage]);
 

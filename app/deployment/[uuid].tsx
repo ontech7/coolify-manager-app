@@ -1,5 +1,6 @@
 import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
+import { ErrorState } from "@/components/error-state";
 import { ModalHeader } from "@/components/modal-header";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -20,7 +21,7 @@ import {
 } from "@/utils/status";
 import { lastLines } from "@/utils/string";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -28,22 +29,34 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
  * Coolify stores deployment logs as a JSON-encoded array of entries
  * ({ output, type, timestamp, hidden, ... }). Fall back to the raw string if
  * it isn't valid JSON.
+ *
+ * Only the last `LOG_LINES` lines are kept: a full build log laid out in one
+ * Text (and re-laid out on every live poll) stutters on low-end phones.
  */
-function parseDeploymentLogs(raw?: string | null): string {
-  if (!raw) return "";
+function tailDeploymentLogs(raw?: string | null) {
+  if (!raw) return { text: "", isTruncated: false };
+  let text = raw;
+  let isTruncated = false;
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed
-        .filter((entry) => entry && !entry.hidden && entry.output != null)
+      const entries = parsed.filter(
+        (entry) => entry && !entry.hidden && entry.output != null,
+      );
+      // Tail before joining, so the whole log is never built as one string.
+      isTruncated = entries.length > LOG_LINES;
+      text = entries
+        .slice(-LOG_LINES)
         .map((entry) => String(entry.output))
-        .join("\n")
-        .trim();
+        .join("\n");
     }
   } catch {
     // Not JSON — show as-is.
   }
-  return raw.trim();
+  // An entry can span several lines: cap the joined text too.
+  const full = text.trim();
+  const tail = lastLines(full, LOG_LINES);
+  return { text: tail, isTruncated: isTruncated || tail.length < full.length };
 }
 
 export default function DeploymentDetails() {
@@ -63,6 +76,9 @@ export default function DeploymentDetails() {
   // Set once the deployment was seen running, so the lines that arrive with
   // the final status are still scrolled into view.
   const [wasLive, setWasLive] = useState(false);
+  // Manual refresh, live polling and the fetch after a cancel can overlap:
+  // only the latest request may update the screen.
+  const requestIdRef = useRef(0);
 
   /** Silent by default: used by live polling without flashing a spinner. */
   const fetchDeployment = useCallback(
@@ -75,13 +91,17 @@ export default function DeploymentDetails() {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
       if (showRefreshing) setIsRefreshing(true);
 
       try {
         const dep = await api.getDeployment(uuid);
+        if (requestId !== requestIdRef.current) return;
         setDeployment(dep);
+        if (isDeploymentActive(dep.status)) setWasLive(true);
         setError(null);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         const message =
           err instanceof Error ? err.message : "Failed to load deployment";
         setError(message);
@@ -89,8 +109,10 @@ export default function DeploymentDetails() {
         // manual refresh didn't change anything.
         if (showRefreshing) Alert.alert("Error", message);
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [uuid, api, isConfigured, isInitializing],
@@ -101,10 +123,6 @@ export default function DeploymentDetails() {
   }, [fetchDeployment]);
 
   const isActive = isDeploymentActive(deployment?.status);
-
-  useEffect(() => {
-    if (isActive) setWasLive(true);
-  }, [isActive]);
 
   const { scrollViewRef, onScroll, onContentSizeChange } = useScrollFollow(
     isActive || wasLive,
@@ -119,6 +137,11 @@ export default function DeploymentDetails() {
 
   const handleRefresh = useCallback(() => {
     fetchDeployment(true);
+  }, [fetchDeployment]);
+
+  const handleRetry = useCallback(() => {
+    setIsLoading(true);
+    fetchDeployment();
   }, [fetchDeployment]);
 
   const handleCancel = useCallback(() => {
@@ -155,17 +178,9 @@ export default function DeploymentDetails() {
   }, [uuid, api, fetchDeployment]);
 
   const buildLogs = useMemo(
-    () => parseDeploymentLogs(deployment?.logs),
+    () => tailDeploymentLogs(deployment?.logs),
     [deployment?.logs],
   );
-
-  // While live, re-render only the tail: a full build log re-laid out every
-  // few seconds stutters on low-end phones. The full log shows once it ends.
-  const visibleLogs = useMemo(
-    () => (isActive ? lastLines(buildLogs, LOG_LINES) : buildLogs),
-    [isActive, buildLogs],
-  );
-  const isLogTruncated = visibleLogs.length < buildLogs.length;
 
   if (isLoading) {
     return (
@@ -181,11 +196,10 @@ export default function DeploymentDetails() {
     return (
       <View style={styles.container}>
         <ModalHeader title="Error" onClose={handleClose} />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            {error || "Deployment not found"}
-          </Text>
-        </View>
+        <ErrorState
+          message={error || "Deployment not found"}
+          onRetry={handleRetry}
+        />
       </View>
     );
   }
@@ -284,16 +298,19 @@ export default function DeploymentDetails() {
           />
         </DetailTable>
 
-        {buildLogs ? (
+        {buildLogs.text ? (
           <View style={styles.logsSection}>
-            <Text style={styles.logsTitle}>
-              {isLogTruncated
-                ? `Build Logs · last ${LOG_LINES} lines while live`
-                : "Build Logs"}
-            </Text>
+            <View style={styles.logsHeader}>
+              <Text style={styles.logsTitle}>Build Logs</Text>
+              {buildLogs.isTruncated && (
+                <Text style={styles.logsHint}>
+                  Showing last {LOG_LINES} lines
+                </Text>
+              )}
+            </View>
             <View style={styles.logsBox}>
               <Text style={styles.logsText} selectable>
-                {visibleLogs}
+                {buildLogs.text}
               </Text>
             </View>
           </View>
@@ -327,11 +344,20 @@ const styles = StyleSheet.create({
   logsSection: {
     marginTop: spacing.xl,
   },
+  logsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
   logsTitle: {
     fontSize: 13,
     fontWeight: "600",
     color: colors.text.secondary,
-    marginBottom: spacing.md,
+  },
+  logsHint: {
+    fontSize: 12,
+    color: colors.text.muted,
   },
   logsBox: {
     backgroundColor: colors.background.code,
@@ -344,12 +370,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.text.secondary,
   },
-  errorContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-  },
   errorBanner: {
     fontSize: 12,
     color: colors.status.error,
@@ -357,10 +377,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
-  },
-  errorText: {
-    fontSize: 14,
-    color: colors.status.error,
-    textAlign: "center",
   },
 });

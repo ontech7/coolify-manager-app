@@ -107,20 +107,35 @@ export class CoolifyAPI {
         },
       });
 
-      clearTimeout(timeoutId);
+      // Read the body before clearing the timeout: a server can send headers
+      // and then stall.
+      const body = await response.text();
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        const errorMessage =
-          (error as { message?: string }).message ||
-          `Status ${response.status}: ${response.statusText}`;
-        throw new HttpError(errorMessage, response.status);
+        let message: string | undefined;
+        try {
+          message = (JSON.parse(body) as { message?: string }).message;
+        } catch {
+          // Not JSON: fall back to the status.
+        }
+        const status = response.statusText
+          ? `Status ${response.status}: ${response.statusText}`
+          : `Status ${response.status}`; // HTTP/2 has no status text
+        throw new HttpError(message || status, response.status);
       }
 
-      return (await response.json()) as T;
-    } catch (error) {
-      clearTimeout(timeoutId);
+      // Some actions answer with an empty body.
+      if (!body.trim()) return null as T;
 
+      try {
+        return JSON.parse(body) as T;
+      } catch {
+        // e.g. an HTML login page from an auth proxy, or a wrong base path.
+        throw new Error(
+          "Unexpected response from server. Check the URL — is it behind a login page or proxy?",
+        );
+      }
+    } catch (error) {
       // expo/fetch rejects an aborted request with a generic FetchError,
       // not an AbortError, so check the signal instead.
       if (controller.signal.aborted) {
@@ -138,6 +153,8 @@ export class CoolifyAPI {
         }
       }
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -182,20 +199,22 @@ export class CoolifyAPI {
   }
 
   async getApplication(uuid: string) {
-    return this.request<ApplicationResponse>(`/applications/${uuid}`);
+    return this.request<ApplicationResponse>(
+      `/applications/${encodeURIComponent(uuid)}`,
+    );
   }
 
   /** Returns the queued deployment's UUID, when Coolify reports one. */
   async startApplication(uuid: string) {
     const result = await this.request<QueuedDeploymentResponse | null>(
-      `/applications/${uuid}/start`,
+      `/applications/${encodeURIComponent(uuid)}/start`,
       { method: this.actionMethod() },
     );
     return result?.deployment_uuid;
   }
 
   async stopApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/stop`, {
+    await this.request<void>(`/applications/${encodeURIComponent(uuid)}/stop`, {
       method: this.actionMethod(),
     });
   }
@@ -203,7 +222,7 @@ export class CoolifyAPI {
   /** Returns the queued deployment's UUID, when Coolify reports one. */
   async restartApplication(uuid: string) {
     const result = await this.request<QueuedDeploymentResponse | null>(
-      `/applications/${uuid}/restart`,
+      `/applications/${encodeURIComponent(uuid)}/restart`,
       { method: this.actionMethod() },
     );
     return result?.deployment_uuid;
@@ -215,7 +234,7 @@ export class CoolifyAPI {
     // and PHP casts "false" to true.
     if (this.apiMode === "legacy") {
       return this.request<DeployResponse>(
-        `/deploy?uuid=${uuid}${force ? "&force=true" : ""}`,
+        `/deploy?uuid=${encodeURIComponent(uuid)}${force ? "&force=true" : ""}`,
       );
     }
 
@@ -227,14 +246,14 @@ export class CoolifyAPI {
 
   async getApplicationLogs(uuid: string, lines: number = 100) {
     return this.request<ApplicationLogsResponse>(
-      `/applications/${uuid}/logs?lines=${lines}`,
+      `/applications/${encodeURIComponent(uuid)}/logs?lines=${lines}`,
     );
   }
 
   async getRollbackImages(uuid: string) {
     return this.requestSince<RollbackImagesResponse>(
       SERVER_ACTIONS_MIN_VERSION,
-      `/applications/${uuid}/rollback-images`,
+      `/applications/${encodeURIComponent(uuid)}/rollback-images`,
     );
   }
 
@@ -242,7 +261,7 @@ export class CoolifyAPI {
   async rollbackApplication(uuid: string, commit: string) {
     return this.requestSince<QueuedDeploymentResponse>(
       SERVER_ACTIONS_MIN_VERSION,
-      `/applications/${uuid}/rollback`,
+      `/applications/${encodeURIComponent(uuid)}/rollback`,
       { method: "POST", body: JSON.stringify({ commit }) },
     );
   }
@@ -253,16 +272,21 @@ export class CoolifyAPI {
 
   async getDeploymentsByApp(uuid: string, skip: number = 0, take: number = 10) {
     return this.request<ApplicationDeploymentsResponse>(
-      `/deployments/applications/${uuid}?skip=${skip}&take=${take}`,
+      `/deployments/applications/${encodeURIComponent(uuid)}?skip=${skip}&take=${take}`,
     );
   }
 
   async getDeployment(uuid: string) {
-    return this.request<DeploymentResponse>(`/deployments/${uuid}`);
+    return this.request<DeploymentResponse>(
+      `/deployments/${encodeURIComponent(uuid)}`,
+    );
   }
 
   async cancelDeployment(uuid: string) {
-    await this.request<void>(`/deployments/${uuid}/cancel`, { method: "POST" });
+    await this.request<void>(
+      `/deployments/${encodeURIComponent(uuid)}/cancel`,
+      { method: "POST" },
+    );
   }
 
   // Databases
@@ -272,19 +296,19 @@ export class CoolifyAPI {
   }
 
   async startDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/start`, {
+    await this.request<void>(`/databases/${encodeURIComponent(uuid)}/start`, {
       method: this.actionMethod(),
     });
   }
 
   async stopDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/stop`, {
+    await this.request<void>(`/databases/${encodeURIComponent(uuid)}/stop`, {
       method: this.actionMethod(),
     });
   }
 
   async restartDatabase(uuid: string) {
-    await this.request<void>(`/databases/${uuid}/restart`, {
+    await this.request<void>(`/databases/${encodeURIComponent(uuid)}/restart`, {
       method: this.actionMethod(),
     });
   }
@@ -293,7 +317,7 @@ export class CoolifyAPI {
   async getDatabaseLogs(uuid: string, lines: number = 100) {
     return this.requestSince<ApplicationLogsResponse>(
       POST_ACTIONS_MIN_VERSION,
-      `/databases/${uuid}/logs?lines=${lines}`,
+      `/databases/${encodeURIComponent(uuid)}/logs?lines=${lines}`,
     );
   }
 
@@ -305,7 +329,9 @@ export class CoolifyAPI {
 
   /** Includes the service's sub-applications and sub-databases. */
   async getService(uuid: string) {
-    return this.request<ServiceDetailResponse>(`/services/${uuid}`);
+    return this.request<ServiceDetailResponse>(
+      `/services/${encodeURIComponent(uuid)}`,
+    );
   }
 
   /**
@@ -319,32 +345,35 @@ export class CoolifyAPI {
   ) {
     return this.requestSince<ApplicationLogsResponse>(
       POST_ACTIONS_MIN_VERSION,
-      `/services/${uuid}/logs?sub_service_name=${encodeURIComponent(subServiceName)}&lines=${lines}`,
+      `/services/${encodeURIComponent(uuid)}/logs?sub_service_name=${encodeURIComponent(subServiceName)}&lines=${lines}`,
     );
   }
 
   async startService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/start`, {
+    await this.request<void>(`/services/${encodeURIComponent(uuid)}/start`, {
       method: this.actionMethod(),
     });
   }
 
   async stopService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/stop`, {
+    await this.request<void>(`/services/${encodeURIComponent(uuid)}/stop`, {
       method: this.actionMethod(),
     });
   }
 
   async restartService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/restart`, {
+    await this.request<void>(`/services/${encodeURIComponent(uuid)}/restart`, {
       method: this.actionMethod(),
     });
   }
 
   async pullLatestImagesService(uuid: string) {
-    await this.request<void>(`/services/${uuid}/restart?latest=true`, {
-      method: this.actionMethod(),
-    });
+    await this.request<void>(
+      `/services/${encodeURIComponent(uuid)}/restart?latest=true`,
+      {
+        method: this.actionMethod(),
+      },
+    );
   }
 
   // Servers
@@ -354,15 +383,17 @@ export class CoolifyAPI {
   }
 
   async getServer(uuid: string) {
-    return this.request<ServerResponse>(`/servers/${uuid}`);
+    return this.request<ServerResponse>(`/servers/${encodeURIComponent(uuid)}`);
   }
 
   async getServerResources(uuid: string) {
-    return this.request<ServerResource[]>(`/servers/${uuid}/resources`);
+    return this.request<ServerResource[]>(
+      `/servers/${encodeURIComponent(uuid)}/resources`,
+    );
   }
 
   async validateServer(uuid: string) {
-    await this.request<void>(`/servers/${uuid}/validate`, {
+    await this.request<void>(`/servers/${encodeURIComponent(uuid)}/validate`, {
       method: this.actionMethod(),
     });
   }
@@ -370,7 +401,7 @@ export class CoolifyAPI {
   async restartProxy(uuid: string) {
     return this.requestSince<MessageResponse>(
       SERVER_ACTIONS_MIN_VERSION,
-      `/servers/${uuid}/proxy/restart`,
+      `/servers/${encodeURIComponent(uuid)}/proxy/restart`,
       { method: "POST" },
     );
   }
@@ -379,7 +410,7 @@ export class CoolifyAPI {
   async runDockerCleanup(uuid: string) {
     return this.requestSince<MessageResponse>(
       SERVER_ACTIONS_MIN_VERSION,
-      `/servers/${uuid}/docker-cleanup/run`,
+      `/servers/${encodeURIComponent(uuid)}/docker-cleanup/run`,
       { method: "POST" },
     );
   }

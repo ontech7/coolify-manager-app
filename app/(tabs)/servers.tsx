@@ -1,4 +1,5 @@
 import { ErrorState } from "@/components/error-state";
+import { RefreshErrorBanner } from "@/components/refresh-error-banner";
 import { ServerCard } from "@/components/servers/server-card";
 import { TabHeader } from "@/components/tab-header";
 import {
@@ -13,7 +14,7 @@ import { colors, spacing } from "@/theme";
 import type { ServerResponse } from "@/types/api";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { RefreshControl, StyleSheet, View } from "react-native";
 
@@ -33,7 +34,7 @@ export default function ServersScreen() {
 
   const handleServerPress = useCallback(
     (uuid: string) => {
-      router.push(`/server/${uuid}` as Href);
+      router.push({ pathname: "/server/[uuid]", params: { uuid } });
     },
     [router],
   );
@@ -116,6 +117,10 @@ export default function ServersScreen() {
   return (
     <View style={styles.container}>
       {header}
+
+      {error && servers.length > 0 && (
+        <RefreshErrorBanner message={error} onRetry={refresh} />
+      )}
 
       <FlashList
         data={servers}

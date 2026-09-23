@@ -87,7 +87,7 @@ function prunePending(
  * a failure in one type still surfaces the others.
  */
 export function useResources() {
-  const { api, isConfigured } = useCoolifyApi();
+  const { api, isConfigured, isInitializing } = useCoolifyApi();
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +98,9 @@ export function useResources() {
   // itself (and restarting auto-refresh) on every change.
   const [pending, setPending] = useState(NO_PENDING);
   const pendingRef = useRef(pending);
+  // Only the latest request may update state: an older one (e.g. from the
+  // previous instance) can resolve after it.
+  const requestIdRef = useRef(0);
 
   const updatePending = useCallback(
     (update: (prev: PendingMap) => PendingMap) => {
@@ -123,6 +126,7 @@ export function useResources() {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
       if (showRefreshing) {
         setIsRefreshing(true);
       }
@@ -140,6 +144,7 @@ export function useResources() {
           api.getServices(),
           hasDeploying ? api.getDeployments() : Promise.resolve(null),
         ]);
+        if (requestId !== requestIdRef.current) return;
 
         const merged: Resource[] = [];
 
@@ -189,12 +194,15 @@ export function useResources() {
           setError(null);
         }
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(
           err instanceof Error ? err.message : "Failed to fetch resources",
         );
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [api, updatePending],
@@ -269,10 +277,10 @@ export function useResources() {
       const deploymentUuid = result.deployments?.[0]?.deployment_uuid;
       if (deploymentUuid) {
         markPending(uuid, {
-            kind: "deploying",
-            deploymentUuid,
-            since: Date.now(),
-          });
+          kind: "deploying",
+          deploymentUuid,
+          since: Date.now(),
+        });
       }
       await fetchResources();
       return deploymentUuid;
@@ -290,8 +298,15 @@ export function useResources() {
   );
 
   useEffect(() => {
-    // Pending actions belong to the previous instance.
+    // Pending actions and in-flight requests belong to the previous instance.
     updatePending(() => NO_PENDING);
+    requestIdRef.current++;
+
+    // Still reading the config: show the skeleton, not "Not configured".
+    if (isInitializing) {
+      setIsLoading(true);
+      return;
+    }
 
     if (!isConfigured) {
       setResources([]);
@@ -305,7 +320,7 @@ export function useResources() {
       setIsLoading(true);
       fetchResources();
     }
-  }, [api, isConfigured, fetchResources, updatePending]);
+  }, [api, isConfigured, isInitializing, fetchResources, updatePending]);
 
   useAutoRefresh(fetchResources, autoRefreshEnabled && isConfigured);
 

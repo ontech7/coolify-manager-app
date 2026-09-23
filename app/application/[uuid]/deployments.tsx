@@ -9,7 +9,7 @@ import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
 import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { FlashList } from "@shopify/flash-list";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback } from "react";
 import {
   ActivityIndicator,
@@ -45,7 +45,10 @@ export default function ApplicationDeploymentsModal() {
 
   const handleDeploymentPress = useCallback(
     (deploymentUuid: string) => {
-      router.push(`/deployment/${deploymentUuid}` as Href);
+      router.push({
+        pathname: "/deployment/[uuid]",
+        params: { uuid: deploymentUuid },
+      });
     },
     [router],
   );
