@@ -1,5 +1,5 @@
 import { AUTO_REFRESH_INTERVAL } from "@/constants";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 

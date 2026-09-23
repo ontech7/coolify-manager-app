@@ -48,11 +48,11 @@ function PressableCard({
   const pressed = useSharedValue(0);
 
   const handlePressIn = useCallback(() => {
-    pressed.value = withSpring(1, motion.spring.press);
+    pressed.set(withSpring(1, motion.spring.press));
   }, [pressed]);
 
   const handlePressOut = useCallback(() => {
-    pressed.value = withSpring(0, motion.spring.press);
+    pressed.set(withSpring(0, motion.spring.press));
   }, [pressed]);
 
   const pressedStyle = useAnimatedStyle(() => ({

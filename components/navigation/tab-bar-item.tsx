@@ -1,6 +1,6 @@
 import { Text } from "@/components/ui/text";
 import { colors, motion } from "@/theme";
-import type { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
+import type { BottomTabNavigationOptions } from "expo-router/js-tabs";
 import { useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {
@@ -33,7 +33,7 @@ export function TabBarItem({
   const progress = useSharedValue(focused ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withSpring(focused ? 1 : 0, motion.spring.snappy);
+    progress.set(withSpring(focused ? 1 : 0, motion.spring.snappy));
   }, [focused, progress]);
 
   const iconStyle = useAnimatedStyle(() => ({

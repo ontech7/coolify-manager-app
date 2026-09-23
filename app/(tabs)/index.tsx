@@ -16,7 +16,7 @@ import { useResources } from "@/hooks/useResources";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, motion, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";

@@ -9,7 +9,7 @@ A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Cooli
 </p>
 
 <p align="center">
-   <img src="https://img.shields.io/badge/Expo-54.0-000020?logo=expo&logoColor=white" alt="Expo">
+   <img src="https://img.shields.io/badge/Expo-57.0-000020?logo=expo&logoColor=white" alt="Expo">
    <img src="https://img.shields.io/badge/v-1.2.0-blue" alt="App Version">
    <img src="https://img.shields.io/badge/License-MIT-61dafb" alt="License">
 </p>
@@ -51,10 +51,10 @@ yarn android
 
 ## Tech Stack
 
-- **Expo SDK** 54
-- **React** 19.1
-- **React Native** 0.81
-- **TypeScript** 5.9
+- **Expo SDK** 57
+- **React** 19.2
+- **React Native** 0.86
+- **TypeScript** 6.0
 
 ## License & Credits
 

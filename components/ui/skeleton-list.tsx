@@ -22,7 +22,7 @@ export function SkeletonList({ count = 5, style }: SkeletonListProps) {
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+    opacity.set(withRepeat(withTiming(1, { duration: 700 }), -1, true));
     return () => cancelAnimation(opacity);
   }, [opacity]);
 

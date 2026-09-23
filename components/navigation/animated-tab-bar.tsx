@@ -3,7 +3,7 @@ import { colors, motion, radius, spacing } from "@/theme";
 import {
   BottomTabBarHeightCallbackContext,
   type BottomTabBarProps,
-} from "@react-navigation/bottom-tabs";
+} from "expo-router/js-tabs";
 import {
   useCallback,
   useContext,
@@ -52,7 +52,7 @@ export function AnimatedTabBar({
   const bottom = insets.bottom > 0 ? insets.bottom + spacing.sm : spacing.xl;
 
   useEffect(() => {
-    position.value = withSpring(state.index, motion.spring.snappy);
+    position.set(withSpring(state.index, motion.spring.snappy));
   }, [state.index, position]);
 
   // Before paint, so screens don't first render with the default height.

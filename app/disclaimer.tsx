@@ -2,7 +2,10 @@ import { Card } from "@/components/ui/card";
 import { ModalHeader } from "@/components/modal-header";
 import { Text } from "@/components/ui/text";
 import { colors, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from "@react-native-vector-icons/material-icons";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
@@ -10,14 +13,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COOLIFY_URL = "https://coolify.io";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
-
 function Section({
   icon,
   title,
   children,
 }: {
-  icon: MaterialIconName;
+  icon: MaterialIconsIconName;
   title: string;
   children: React.ReactNode;
 }) {

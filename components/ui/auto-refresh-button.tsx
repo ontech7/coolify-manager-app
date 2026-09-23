@@ -1,6 +1,6 @@
 import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useCallback, useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {
@@ -29,14 +29,16 @@ export function AutoRefreshButton({
 
   useEffect(() => {
     if (enabled) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 1000, easing: Easing.linear }),
-        -1,
-        false,
+      rotation.set(
+        withRepeat(
+          withTiming(360, { duration: 1000, easing: Easing.linear }),
+          -1,
+          false,
+        ),
       );
     } else {
       cancelAnimation(rotation);
-      rotation.value = 0;
+      rotation.set(0);
     }
   }, [enabled, rotation]);
 

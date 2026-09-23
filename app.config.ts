@@ -12,7 +12,6 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/images/icon.png",
   scheme: IS_DEV ? "coolifymanager-dev" : "coolifymanager",
   userInterfaceStyle: "dark",
-  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: IS_DEV
@@ -24,7 +23,6 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
       backgroundImage: "./assets/images/adaptive-icon-bg.png",
       foregroundImage: "./assets/images/adaptive-icon.png",
     },
-    edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: IS_DEV
       ? "com.ontech7.coolifyManager.dev"
@@ -36,6 +34,9 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    "expo-font",
+    ["expo-secure-store", { faceIDPermission: false }],
+    "expo-status-bar",
     [
       "expo-build-properties",
       {

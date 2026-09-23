@@ -1,10 +1,10 @@
 import { AnimatedTabBar } from "@/components/navigation/animated-tab-bar";
 import { colors, motion } from "@/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import type {
   BottomTabBarProps,
   BottomTabNavigationOptions,
-} from "@react-navigation/bottom-tabs";
+} from "expo-router/js-tabs";
 import { Tabs } from "expo-router";
 import { Easing } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";

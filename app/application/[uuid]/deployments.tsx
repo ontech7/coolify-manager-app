@@ -7,7 +7,7 @@ import { Text } from "@/components/ui/text";
 import { useApplicationDeployments } from "@/hooks/useApplicationDeployments";
 import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback } from "react";
