@@ -10,8 +10,8 @@ import type {
   DeploymentResponse,
   DeployResponse,
   MessageResponse,
+  QueuedDeploymentResponse,
   RollbackImagesResponse,
-  RollbackResponse,
   ServerResource,
   ServerResponse,
   ServiceDetailResponse,
@@ -185,10 +185,13 @@ export class CoolifyAPI {
     return this.request<ApplicationResponse>(`/applications/${uuid}`);
   }
 
+  /** Returns the queued deployment's UUID, when Coolify reports one. */
   async startApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/start`, {
-      method: this.actionMethod(),
-    });
+    const result = await this.request<QueuedDeploymentResponse | null>(
+      `/applications/${uuid}/start`,
+      { method: this.actionMethod() },
+    );
+    return result?.deployment_uuid;
   }
 
   async stopApplication(uuid: string) {
@@ -197,10 +200,13 @@ export class CoolifyAPI {
     });
   }
 
+  /** Returns the queued deployment's UUID, when Coolify reports one. */
   async restartApplication(uuid: string) {
-    await this.request<void>(`/applications/${uuid}/restart`, {
-      method: this.actionMethod(),
-    });
+    const result = await this.request<QueuedDeploymentResponse | null>(
+      `/applications/${uuid}/restart`,
+      { method: this.actionMethod() },
+    );
+    return result?.deployment_uuid;
   }
 
   /** `force` rebuilds without the Docker build cache. */
@@ -234,7 +240,7 @@ export class CoolifyAPI {
 
   /** Queue a deployment of a previous image. `commit` is the image tag. */
   async rollbackApplication(uuid: string, commit: string) {
-    return this.requestSince<RollbackResponse>(
+    return this.requestSince<QueuedDeploymentResponse>(
       SERVER_ACTIONS_MIN_VERSION,
       `/applications/${uuid}/rollback`,
       { method: "POST", body: JSON.stringify({ commit }) },

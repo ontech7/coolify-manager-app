@@ -5,6 +5,18 @@ export const LIVE_DEPLOYMENT_REFRESH_INTERVAL = 3000; // 3 seconds
 
 export const LOG_LINES = 500;
 
+/**
+ * How long a resource shows "Starting"/"Stopping" after the action from the
+ * app, if Coolify never reports the new state (e.g. the action failed).
+ */
+export const PENDING_ACTION_TIMEOUT = 120000; // 2 minutes
+
+/**
+ * Safety net for "Deploying" when Coolify's deployment list can't be read:
+ * builds can be long, so this is much larger than PENDING_ACTION_TIMEOUT.
+ */
+export const PENDING_DEPLOY_TIMEOUT = 1800000; // 30 minutes
+
 /** Screen-reader "double tap" on a card title opens the card. */
 export const ACTIVATE_ACTION = [{ name: "activate" as const }];
 

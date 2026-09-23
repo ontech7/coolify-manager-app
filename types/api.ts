@@ -35,7 +35,8 @@ export interface RollbackImagesResponse {
   images: RollbackImage[];
 }
 
-export interface RollbackResponse {
+/** Actions that queue a deployment: app start/restart and rollback. */
+export interface QueuedDeploymentResponse {
   message: string;
   deployment_uuid?: string;
 }
@@ -190,4 +191,14 @@ export interface Resource {
   subtitle?: string | null;
   /** Applications only — used for the "open website" action. */
   fqdn?: string | null;
+  /** Set after a start/stop/deploy from the app, until Coolify catches up. */
+  pending?: ResourcePending;
 }
+
+/**
+ * Local state for an action started from the app. Coolify keeps reporting the
+ * old status (e.g. "exited") while a deployment is queued or building.
+ */
+export type ResourcePending =
+  | { kind: "deploying"; deploymentUuid: string; since: number }
+  | { kind: "starting" | "stopping"; since: number };
