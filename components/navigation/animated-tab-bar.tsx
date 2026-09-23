@@ -167,8 +167,7 @@ const styles = StyleSheet.create({
     left: 0,
     height: TAB_ITEM_HEIGHT,
     borderRadius: radius.full,
-    // Darker violet keeps white 10px labels above 4.5:1 contrast.
-    backgroundColor: colors.primary.hover,
+    backgroundColor: colors.primary.default,
     pointerEvents: "none",
   },
 });
