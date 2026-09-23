@@ -78,6 +78,7 @@ export function useApplicationDeployments(uuid: string | undefined) {
       setError(null);
       setIsLoading(false);
       setIsRefreshing(false);
+      setIsLoadingMore(false);
       return;
     }
 

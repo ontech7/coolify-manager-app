@@ -28,7 +28,7 @@ export function ModalHeader({ title, onClose, children }: ModalHeaderProps) {
           size={24}
           onPress={onClose}
           // 24pt icon: widen the target to ~44pt.
-          hitSlop={10}
+          hitSlop={spacing.lg}
           accessibilityLabel="Close"
         />
       </View>

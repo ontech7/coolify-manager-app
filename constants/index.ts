@@ -5,6 +5,15 @@ export const LIVE_DEPLOYMENT_REFRESH_INTERVAL = 3000; // 3 seconds
 
 export const LOG_LINES = 500;
 
+/** Time for a Coolify server to start answering a request. */
+export const REQUEST_TIMEOUT = 10000; // 10 seconds
+
+/**
+ * Time to download a response once it started: deployment and log bodies can
+ * be several MB on a slow mobile connection.
+ */
+export const RESPONSE_BODY_TIMEOUT = 30000; // 30 seconds
+
 /**
  * How long a resource shows "Starting"/"Stopping" after the action from the
  * app, if Coolify never reports the new state (e.g. the action failed).

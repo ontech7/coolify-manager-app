@@ -22,7 +22,7 @@ import {
 import { lastLines } from "@/utils/string";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
@@ -30,10 +30,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
  * ({ output, type, timestamp, hidden, ... }). Fall back to the raw string if
  * it isn't valid JSON.
  *
- * Only the last `LOG_LINES` lines are kept: a full build log laid out in one
- * Text (and re-laid out on every live poll) stutters on low-end phones.
+ * Keeps the last `maxLines` lines: a full build log laid out in one Text (and
+ * re-laid out on every live poll) stutters on low-end phones.
  */
-function tailDeploymentLogs(raw?: string | null) {
+function tailDeploymentLogs(raw: string | null | undefined, maxLines: number) {
   if (!raw) return { text: "", isTruncated: false };
   let text = raw;
   let isTruncated = false;
@@ -44,9 +44,9 @@ function tailDeploymentLogs(raw?: string | null) {
         (entry) => entry && !entry.hidden && entry.output != null,
       );
       // Tail before joining, so the whole log is never built as one string.
-      isTruncated = entries.length > LOG_LINES;
+      isTruncated = entries.length > maxLines;
       text = entries
-        .slice(-LOG_LINES)
+        .slice(-maxLines)
         .map((entry) => String(entry.output))
         .join("\n");
     }
@@ -55,7 +55,7 @@ function tailDeploymentLogs(raw?: string | null) {
   }
   // An entry can span several lines: cap the joined text too.
   const full = text.trim();
-  const tail = lastLines(full, LOG_LINES);
+  const tail = lastLines(full, maxLines);
   return { text: tail, isTruncated: isTruncated || tail.length < full.length };
 }
 
@@ -86,6 +86,7 @@ export default function DeploymentDetails() {
       // Wait for the provider; once it's ready, no API means no instance.
       if (isInitializing || !uuid) return;
       if (!isConfigured || !api) {
+        requestIdRef.current++; // drop a poll still in flight
         setError("Not configured");
         setIsLoading(false);
         return;
@@ -177,10 +178,22 @@ export default function DeploymentDetails() {
     );
   }, [uuid, api, fetchDeployment]);
 
+  // The full log is opt-in and only once the deployment ended: it's no longer
+  // polled, so it's laid out once.
+  const [showFullLog, setShowFullLog] = useState(false);
+  const canShowFullLog = showFullLog && !isActive;
   const buildLogs = useMemo(
-    () => tailDeploymentLogs(deployment?.logs),
-    [deployment?.logs],
+    () =>
+      tailDeploymentLogs(
+        deployment?.logs,
+        canShowFullLog ? Infinity : LOG_LINES,
+      ),
+    [deployment?.logs, canShowFullLog],
   );
+
+  const handleShowFullLog = useCallback(() => {
+    setShowFullLog(true);
+  }, []);
 
   if (isLoading) {
     return (
@@ -303,9 +316,25 @@ export default function DeploymentDetails() {
             <View style={styles.logsHeader}>
               <Text style={styles.logsTitle}>Build Logs</Text>
               {buildLogs.isTruncated && (
-                <Text style={styles.logsHint}>
-                  Showing last {LOG_LINES} lines
-                </Text>
+                <Text style={styles.logsHint}>Last {LOG_LINES} lines</Text>
+              )}
+              {buildLogs.isTruncated && !isActive && (
+                <Pressable
+                  onPress={handleShowFullLog}
+                  hitSlop={spacing.lg}
+                  accessibilityRole="button"
+                >
+                  {({ pressed }) => (
+                    <Text
+                      style={[
+                        styles.logsAction,
+                        pressed && styles.logsActionPressed,
+                      ]}
+                    >
+                      Show full log
+                    </Text>
+                  )}
+                </Pressable>
               )}
             </View>
             <View style={styles.logsBox}>
@@ -354,6 +383,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.text.secondary,
+  },
+  logsAction: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary.light,
+  },
+  logsActionPressed: {
+    opacity: 0.7,
   },
   logsHint: {
     fontSize: 12,

@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StaggeredItem } from "@/components/ui/staggered-item";
 import { Text } from "@/components/ui/text";
+import { UnsupportedVersionError } from "@/lib/coolify-api";
 import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
@@ -39,6 +40,8 @@ export default function RollbackModal() {
   const [images, setImages] = useState<RollbackImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Retrying can't help on a server that predates rollback.
+  const [isUnsupported, setIsUnsupported] = useState(false);
   const [rollingBackTag, setRollingBackTag] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -57,6 +60,7 @@ export default function RollbackModal() {
       setImages(result.images ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load images");
+      setIsUnsupported(err instanceof UnsupportedVersionError);
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +131,12 @@ export default function RollbackModal() {
 
       {isLoading ? (
         <LoadingSpinner message="Loading images..." />
+      ) : error && isUnsupported ? (
+        <EmptyState
+          icon="history"
+          title="Rollback Unavailable"
+          message={error}
+        />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : images.length === 0 ? (

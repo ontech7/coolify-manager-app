@@ -1,5 +1,7 @@
 import {
   POST_ACTIONS_MIN_VERSION,
+  REQUEST_TIMEOUT,
+  RESPONSE_BODY_TIMEOUT,
   SERVER_ACTIONS_MIN_VERSION,
 } from "@/constants";
 import type {
@@ -21,6 +23,13 @@ import type { ApiMode } from "@/types/config";
 
 interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
+}
+
+/** The endpoint is missing on this server: it needs a newer Coolify. */
+export class UnsupportedVersionError extends Error {
+  constructor(minVersion: string) {
+    super(`This action requires Coolify ${minVersion} or newer.`);
+  }
 }
 
 /** Non-2xx API response. Keeps the status so callers can tell a 404 apart. */
@@ -62,7 +71,7 @@ export class CoolifyAPI {
    */
   async getVersion(): Promise<string | null> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
     try {
       const response = await fetch(`${this.baseUrl}/api/v1/version`, {
@@ -95,7 +104,7 @@ export class CoolifyAPI {
     const url = `${this.baseUrl}/api/v1${endpoint}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    let timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
     try {
       const response = await fetch(url, {
@@ -107,8 +116,10 @@ export class CoolifyAPI {
         },
       });
 
-      // Read the body before clearing the timeout: a server can send headers
-      // and then stall.
+      // The body gets its own, longer budget: a server can send headers and
+      // then stall, but large logs also need time on a slow connection.
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => controller.abort(), RESPONSE_BODY_TIMEOUT);
       const body = await response.text();
 
       if (!response.ok) {
@@ -124,13 +135,11 @@ export class CoolifyAPI {
         throw new HttpError(message || status, response.status);
       }
 
-      // Some actions answer with an empty body.
-      if (!body.trim()) return null as T;
-
       try {
         return JSON.parse(body) as T;
       } catch {
-        // e.g. an HTML login page from an auth proxy, or a wrong base path.
+        // e.g. an HTML login page from an auth proxy, a wrong base path, or an
+        // empty body: Coolify always answers with JSON.
         throw new Error(
           "Unexpected response from server. Check the URL — is it behind a login page or proxy?",
         );
@@ -176,7 +185,7 @@ export class CoolifyAPI {
         error.status === 404 &&
         error.message === "Not found."
       ) {
-        throw new Error(`This action requires Coolify ${minVersion} or newer.`);
+        throw new UnsupportedVersionError(minVersion);
       }
       throw error;
     }
