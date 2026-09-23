@@ -6,7 +6,7 @@ import { colors, radius, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { getResourceStatus } from "@/utils/status";
 import { useCallback } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { ResourceActions } from "./resource-actions";
 
 interface ResourceCardProps {
@@ -40,13 +40,20 @@ export function ResourceCard({
   onViewLogs,
   onOpenDeployment,
 }: ResourceCardProps) {
-  const status = getResourceStatus(resource.status);
+  const { pending } = resource;
+  const status = pending ? pending.kind : getResourceStatus(resource.status);
   const chip = typeChip[resource.resourceType];
   const isApplication = resource.resourceType === "application";
+  const deploymentUuid =
+    pending?.kind === "deploying" ? pending.deploymentUuid : undefined;
 
   const handlePress = useCallback(() => {
     onPress(resource.uuid);
   }, [onPress, resource.uuid]);
+
+  const handleOpenDeployment = useCallback(() => {
+    if (deploymentUuid) onOpenDeployment(deploymentUuid);
+  }, [deploymentUuid, onOpenDeployment]);
 
   return (
     <Card style={styles.card} onPress={isApplication ? handlePress : undefined}>
@@ -75,7 +82,19 @@ export function ResourceCard({
             ) : null}
           </View>
         </View>
-        <StatusBadge status={status} />
+        {deploymentUuid ? (
+          <Pressable
+            onPress={handleOpenDeployment}
+            hitSlop={spacing.sm}
+            accessibilityRole="button"
+            accessibilityLabel="Deploying"
+            accessibilityHint="Opens the live deployment logs"
+          >
+            <StatusBadge status={status} />
+          </Pressable>
+        ) : (
+          <StatusBadge status={status} />
+        )}
       </View>
 
       <ResourceActions

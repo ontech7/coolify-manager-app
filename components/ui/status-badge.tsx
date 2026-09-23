@@ -16,6 +16,9 @@ type StatusType =
   | "exited:unhealthy"
   | "stopped"
   | "building"
+  | "deploying"
+  | "starting"
+  | "stopping"
   | "unknown"
   | "success"
   | "failed"
@@ -56,6 +59,24 @@ const statusConfig: Record<
     label: "Building",
     color: colors.status.warning,
     bgColor: colors.status.warningBg,
+    pulse: true,
+  },
+  deploying: {
+    label: "Deploying",
+    color: colors.status.warning,
+    bgColor: colors.status.warningBg,
+    pulse: true,
+  },
+  starting: {
+    label: "Starting",
+    color: colors.status.warning,
+    bgColor: colors.status.warningBg,
+    pulse: true,
+  },
+  stopping: {
+    label: "Stopping",
+    color: colors.status.error,
+    bgColor: colors.status.errorBg,
     pulse: true,
   },
   unknown: {

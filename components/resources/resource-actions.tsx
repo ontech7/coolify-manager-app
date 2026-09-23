@@ -38,6 +38,10 @@ export function ResourceActions({
   const isApplication = resource.resourceType === "application";
   const isService = resource.resourceType === "service";
   const isRunning = isResourceRunning(resource.status);
+  // Coolify still reports the old status while an action is underway: block
+  // actions that would queue it again. Stop stays available unless stopping.
+  const isPending = resource.pending !== undefined;
+  const isStopping = resource.pending?.kind === "stopping";
   const canViewLogs = isApplication || supportsResourceLogs;
 
   const handleAction = useCallback(
@@ -166,7 +170,7 @@ export function ResourceActions({
             variant="deploy"
             onPress={handleDeploy}
             loading={loadingAction === "deploy"}
-            disabled={loadingAction !== null}
+            disabled={loadingAction !== null || isPending}
           />
         )}
         {isService && (
@@ -177,7 +181,7 @@ export function ResourceActions({
             variant="deploy"
             onPress={handlePullLatest}
             loading={loadingAction === "pull"}
-            disabled={loadingAction !== null}
+            disabled={loadingAction !== null || isPending}
           />
         )}
         <IconButton
@@ -187,7 +191,7 @@ export function ResourceActions({
           variant="restart"
           onPress={handleRestart}
           loading={loadingAction === "restart"}
-          disabled={loadingAction !== null || !isRunning}
+          disabled={loadingAction !== null || !isRunning || isPending}
         />
         <IconButton
           name={isRunning ? "stop" : "play-arrow"}
@@ -196,7 +200,9 @@ export function ResourceActions({
           variant={isRunning ? "stop" : "start"}
           onPress={handleStartStop}
           loading={loadingAction === "start" || loadingAction === "stop"}
-          disabled={loadingAction !== null}
+          disabled={
+            loadingAction !== null || isStopping || (isPending && !isRunning)
+          }
         />
       </View>
       <View style={styles.actionsRight}>
