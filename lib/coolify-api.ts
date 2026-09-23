@@ -129,6 +129,7 @@ export class CoolifyAPI {
       if (error instanceof Error) {
         if (
           error.message === "Failed to fetch" ||
+          error.message === "Network request failed" ||
           error.message.startsWith("fetch failed")
         ) {
           throw new Error(

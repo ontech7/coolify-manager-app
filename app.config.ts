@@ -35,7 +35,7 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-font",
-    "expo-secure-store",
+    ["expo-secure-store", { faceIDPermission: false }],
     "expo-status-bar",
     [
       "expo-build-properties",
