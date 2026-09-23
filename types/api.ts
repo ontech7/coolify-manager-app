@@ -1,16 +1,5 @@
 // General
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export interface ApiError {
-  message: string;
-  status?: number;
-}
-
 export interface TestConnectionResponse {
   success: boolean;
   error?: string;
@@ -18,9 +7,35 @@ export interface TestConnectionResponse {
   version?: string;
 }
 
+export interface MessageResponse {
+  message: string;
+}
+
 // Deploy
 
+/** Response of /deploy: one entry per deployed resource. */
 export interface DeployResponse {
+  deployments?: {
+    message: string;
+    resource_uuid: string;
+    deployment_uuid?: string;
+  }[];
+}
+
+// Rollback (Coolify >= 4.3.0)
+
+export interface RollbackImage {
+  tag: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface RollbackImagesResponse {
+  current: string | null;
+  images: RollbackImage[];
+}
+
+export interface RollbackResponse {
   message: string;
   deployment_uuid?: string;
 }
@@ -116,6 +131,19 @@ export interface ServiceResponse {
   updated_at?: string;
 }
 
+/** A container inside a service (one of its applications or databases). */
+export interface ServiceContainer {
+  uuid: string;
+  name: string;
+  human_name?: string | null;
+  status?: string;
+}
+
+export interface ServiceDetailResponse extends ServiceResponse {
+  applications?: ServiceContainer[];
+  databases?: ServiceContainer[];
+}
+
 // Servers
 
 export interface ServerSettings {
@@ -141,6 +169,13 @@ export interface ServerResource {
   status: string;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Resources per health bucket, for header summaries. */
+export interface StatusCounts {
+  running: number;
+  unhealthy: number;
+  stopped: number;
 }
 
 // Unified resource (application | database | service)

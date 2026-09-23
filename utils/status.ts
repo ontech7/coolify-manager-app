@@ -2,6 +2,7 @@ import type {
   ApplicationResponse,
   ApplicationStatus,
   DeploymentStatus,
+  StatusCounts,
 } from "@/types/api";
 
 export function getApplicationStatus(
@@ -53,10 +54,6 @@ export function getResourceStatus(rawStatus?: string): ApplicationStatus {
   return "unknown";
 }
 
-export function isApplicationRunning(app: ApplicationResponse) {
-  return isResourceRunning(app.status);
-}
-
 export function isResourceRunning(rawStatus?: string) {
   return (rawStatus?.toLowerCase() ?? "").includes("running");
 }
@@ -101,4 +98,21 @@ export function isDeploymentActive(rawStatus?: string) {
 
 export function canCancelDeployment(rawStatus?: string) {
   return isDeploymentActive(rawStatus);
+}
+
+/** At-a-glance counts for a list of resources, for the screen header. */
+export function summarizeStatuses(
+  items: readonly { status?: string }[],
+): StatusCounts {
+  const summary: StatusCounts = { running: 0, unhealthy: 0, stopped: 0 };
+
+  for (const item of items) {
+    const status = getResourceStatus(item.status);
+    if (status === "running:healthy") summary.running++;
+    else if (status === "running:unhealthy" || status === "exited:unhealthy")
+      summary.unhealthy++;
+    else if (status === "stopped") summary.stopped++;
+  }
+
+  return summary;
 }

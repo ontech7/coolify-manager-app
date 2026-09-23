@@ -4,7 +4,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";
 import { GITHUB_REPO_URL, POST_ACTIONS_MIN_VERSION } from "@/constants";
 import { useConfig } from "@/hooks/useConfig";
-import { triggerHaptic } from "@/hooks/useHaptics";
+import { triggerHaptic } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
 import type { ApiMode, CoolifyInstance } from "@/types/config";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/utils/validation";
 import { isVersionAtLeast } from "@/utils/version";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -37,6 +38,8 @@ type FormMode =
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The floating tab bar overlays the bottom of the screen.
+  const tabBarHeight = useBottomTabBarHeight();
 
   const {
     instances,
@@ -257,7 +260,7 @@ export default function SettingsScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.xl,
-            paddingBottom: insets.bottom + spacing.xl,
+            paddingBottom: tabBarHeight + spacing.xl,
           },
         ]}
         keyboardShouldPersistTaps="handled"
@@ -590,7 +593,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.text.muted,
   },
   section: {

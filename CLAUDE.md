@@ -16,7 +16,7 @@ Coolify Manager is a React Native app (Expo SDK) to manage Coolify instances fro
 | `hooks/` | Data fetching + reusable logic | `hooks/useResources.ts` |
 | `lib/` | API client, storage, events | `lib/coolify-api.ts` |
 | `providers/` | React context | `providers/coolify-api-provider.tsx` |
-| `theme/` | Colors, spacing, radius, typography | `theme/index.ts` |
+| `theme/` | Colors, spacing, radius, motion | `theme/index.ts` |
 | `types/` | Shared types (API, config) | `types/api.ts` |
 | `utils/` | Pure functions | `utils/status.ts` |
 | `constants/` | Centralized constants | `constants/index.ts` |

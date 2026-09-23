@@ -1,5 +1,19 @@
 export const AUTO_REFRESH_INTERVAL = 5000; // 5 seconds
 
+/** Faster polling while watching a deployment build live. */
+export const LIVE_DEPLOYMENT_REFRESH_INTERVAL = 3000; // 3 seconds
+
+export const LOG_LINES = 500;
+
+/** Screen-reader "double tap" on a card title opens the card. */
+export const ACTIVATE_ACTION = [{ name: "activate" as const }];
+
+/**
+ * Distance from the bottom (px) within which a live log view keeps following
+ * new lines. Scrolling further up pauses following so the user can read.
+ */
+export const SCROLL_FOLLOW_THRESHOLD = 80;
+
 export const STORAGE_KEYS = {
   INSTANCES: "coolify_instances",
   ACTIVE_INSTANCE_ID: "coolify_active_instance_id",
@@ -15,3 +29,9 @@ export const GITHUB_REPO_URL = "https://github.com/ontech7/coolify-manager-app";
  * deploy/validate) from GET to POST. Servers >= this version require POST.
  */
 export const POST_ACTIONS_MIN_VERSION = "4.2.0";
+
+/**
+ * Coolify version that added the rollback, proxy restart and Docker cleanup
+ * endpoints. Older servers answer 404 on them.
+ */
+export const SERVER_ACTIONS_MIN_VERSION = "4.3.0";

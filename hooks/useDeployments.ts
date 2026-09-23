@@ -1,7 +1,7 @@
-import { AUTO_REFRESH_INTERVAL } from "@/constants";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import type { DeploymentResponse } from "@/types/api";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function useDeployments() {
   const { api, isConfigured } = useCoolifyApi();
@@ -11,8 +11,6 @@ export function useDeployments() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchDeployments = useCallback(
     async (showRefreshing = false) => {
@@ -77,37 +75,7 @@ export function useDeployments() {
     }
   }, [api, isConfigured, fetchDeployments]);
 
-  useEffect(() => {
-    if (!autoRefreshEnabled || !isConfigured) {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-      return;
-    }
-
-    let cancelled = false;
-
-    const scheduleRefresh = () => {
-      refreshTimerRef.current = setTimeout(async () => {
-        await fetchDeployments();
-        if (cancelled) {
-          return;
-        }
-        scheduleRefresh();
-      }, AUTO_REFRESH_INTERVAL);
-    };
-
-    scheduleRefresh();
-
-    return () => {
-      cancelled = true;
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, [autoRefreshEnabled, isConfigured, fetchDeployments]);
+  useAutoRefresh(fetchDeployments, autoRefreshEnabled && isConfigured);
 
   return {
     deployments,

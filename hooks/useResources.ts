@@ -1,4 +1,4 @@
-import { AUTO_REFRESH_INTERVAL } from "@/constants";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import type {
   DatabaseResponse,
@@ -6,7 +6,7 @@ import type {
   ResourceType,
   ServiceResponse,
 } from "@/types/api";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function databaseToResource(db: DatabaseResponse): Resource {
   return {
@@ -41,8 +41,6 @@ export function useResources() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchResources = useCallback(
     async (showRefreshing = false) => {
@@ -152,11 +150,13 @@ export function useResources() {
     [api, fetchResources],
   );
 
+  /** Returns the queued deployment's UUID, when Coolify reports one. */
   const deploy = useCallback(
-    async (uuid: string) => {
-      if (!api) return;
-      await api.deployApplication(uuid);
+    async (uuid: string, force: boolean = false) => {
+      if (!api) return undefined;
+      const result = await api.deployApplication(uuid, force);
       await fetchResources();
+      return result.deployments?.[0]?.deployment_uuid;
     },
     [api, fetchResources],
   );
@@ -185,37 +185,7 @@ export function useResources() {
     }
   }, [api, isConfigured, fetchResources]);
 
-  useEffect(() => {
-    if (!autoRefreshEnabled || !isConfigured) {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-      return;
-    }
-
-    let cancelled = false;
-
-    const scheduleRefresh = () => {
-      refreshTimerRef.current = setTimeout(async () => {
-        await fetchResources();
-        if (cancelled) {
-          return;
-        }
-        scheduleRefresh();
-      }, AUTO_REFRESH_INTERVAL);
-    };
-
-    scheduleRefresh();
-
-    return () => {
-      cancelled = true;
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, [autoRefreshEnabled, isConfigured, fetchResources]);
+  useAutoRefresh(fetchResources, autoRefreshEnabled && isConfigured);
 
   return {
     resources,
