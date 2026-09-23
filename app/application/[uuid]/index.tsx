@@ -10,7 +10,7 @@ import { colors, radius, spacing } from "@/theme";
 import type { ApplicationResponse } from "@/types/api";
 import { formatDateTime } from "@/utils/date";
 import { getApplicationStatus } from "@/utils/status";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -63,19 +63,28 @@ export default function ApplicationDetailsModal() {
     router.back();
   }, [router]);
 
-  const encodedName = encodeURIComponent(application?.name ?? "");
+  const name = application?.name;
 
   const handleViewLogs = useCallback(() => {
-    router.push(`/logs/${uuid}?type=application&name=${encodedName}` as Href);
-  }, [router, uuid, encodedName]);
+    router.push({
+      pathname: "/logs/[uuid]",
+      params: { uuid, type: "application", name },
+    });
+  }, [router, uuid, name]);
 
   const handleViewDeployments = useCallback(() => {
-    router.push(`/application/${uuid}/deployments` as Href);
+    router.push({
+      pathname: "/application/[uuid]/deployments",
+      params: { uuid },
+    });
   }, [router, uuid]);
 
   const handleRollback = useCallback(() => {
-    router.push(`/application/${uuid}/rollback?name=${encodedName}` as Href);
-  }, [router, uuid, encodedName]);
+    router.push({
+      pathname: "/application/[uuid]/rollback",
+      params: { uuid, name },
+    });
+  }, [router, uuid, name]);
 
   const fqdnUrls = useMemo(
     () =>
@@ -132,8 +141,12 @@ export default function ApplicationDetailsModal() {
 
         <View style={styles.actionsRow}>
           <Pressable
-            style={styles.actionButton}
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
             onPress={handleViewDeployments}
+            accessibilityRole="button"
           >
             <MaterialIcons
               name="history"
@@ -144,7 +157,14 @@ export default function ApplicationDetailsModal() {
               History
             </Text>
           </Pressable>
-          <Pressable style={styles.actionButton} onPress={handleViewLogs}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
+            onPress={handleViewLogs}
+            accessibilityRole="button"
+          >
             <MaterialIcons
               name="article"
               size={20}
@@ -155,7 +175,14 @@ export default function ApplicationDetailsModal() {
             </Text>
           </Pressable>
           {activeInstance?.apiMode !== "legacy" && (
-            <Pressable style={styles.actionButton} onPress={handleRollback}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+              ]}
+              onPress={handleRollback}
+              accessibilityRole="button"
+            >
               <MaterialIcons
                 name="settings-backup-restore"
                 size={20}
@@ -242,6 +269,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surface.border,
     borderRadius: radius.md,
+  },
+  actionButtonPressed: {
+    backgroundColor: colors.surface.hover,
   },
   actionButtonText: {
     flexShrink: 1,

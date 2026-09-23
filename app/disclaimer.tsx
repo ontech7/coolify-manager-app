@@ -8,7 +8,7 @@ import {
 } from "@react-native-vector-icons/material-icons";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COOLIFY_URL = "https://coolify.io";
@@ -41,8 +41,13 @@ export default function DisclaimerScreen() {
     router.back();
   }, [router]);
 
-  const handleOpenCoolify = useCallback(() => {
-    Linking.openURL(COOLIFY_URL);
+  const handleOpenCoolify = useCallback(async () => {
+    const supported = await Linking.canOpenURL(COOLIFY_URL);
+    if (supported) {
+      await Linking.openURL(COOLIFY_URL);
+    } else {
+      Alert.alert(`Cannot open this URL: ${COOLIFY_URL}`);
+    }
   }, []);
 
   return (
@@ -75,7 +80,11 @@ export default function DisclaimerScreen() {
           team.
         </Section>
 
-        <Text style={styles.link} onPress={handleOpenCoolify}>
+        <Text
+          style={styles.link}
+          onPress={handleOpenCoolify}
+          accessibilityRole="link"
+        >
           Learn more at coolify.io
         </Text>
 

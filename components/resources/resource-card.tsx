@@ -85,7 +85,7 @@ export function ResourceCard({
         {deploymentUuid ? (
           <Pressable
             onPress={handleOpenDeployment}
-            hitSlop={spacing.sm}
+            hitSlop={spacing.lg}
             accessibilityRole="button"
             accessibilityLabel="Deploying"
             accessibilityHint="Opens the live deployment logs"
@@ -97,7 +97,10 @@ export function ResourceCard({
         )}
       </View>
 
+      {/* Keyed so a recycled cell doesn't carry an in-flight spinner over to
+          another resource. */}
       <ResourceActions
+        key={resource.uuid}
         resource={resource}
         supportsResourceLogs={supportsResourceLogs}
         onDeploy={onDeploy}

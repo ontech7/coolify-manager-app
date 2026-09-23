@@ -1,5 +1,6 @@
 import { DeploymentCard } from "@/components/deployments/deployment-card";
 import { ErrorState } from "@/components/error-state";
+import { RefreshErrorBanner } from "@/components/refresh-error-banner";
 import { TabHeader } from "@/components/tab-header";
 import { AutoRefreshButton } from "@/components/ui/auto-refresh-button";
 import {
@@ -14,7 +15,7 @@ import { colors, spacing } from "@/theme";
 import type { DeploymentResponse } from "@/types/api";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback } from "react";
 import { RefreshControl, StyleSheet, View } from "react-native";
 
@@ -40,7 +41,7 @@ export default function DeploymentsScreen() {
 
   const handleDeploymentPress = useCallback(
     (uuid: string) => {
-      router.push(`/deployment/${uuid}` as Href);
+      router.push({ pathname: "/deployment/[uuid]", params: { uuid } });
     },
     [router],
   );
@@ -125,6 +126,10 @@ export default function DeploymentsScreen() {
   return (
     <View style={styles.container}>
       {header}
+
+      {error && deployments.length > 0 && (
+        <RefreshErrorBanner message={error} onRetry={refresh} />
+      )}
 
       <FlashList
         data={deployments}

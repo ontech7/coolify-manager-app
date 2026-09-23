@@ -1,4 +1,5 @@
 import { ErrorState } from "@/components/error-state";
+import { RefreshErrorBanner } from "@/components/refresh-error-banner";
 import { ResourceCard } from "@/components/resources/resource-card";
 import { StatusSummary } from "@/components/resources/status-summary";
 import { TabHeader } from "@/components/tab-header";
@@ -18,7 +19,7 @@ import { colors, motion, spacing } from "@/theme";
 import type { Resource, ResourceType } from "@/types/api";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -83,6 +84,14 @@ export default function ResourcesScreen() {
     );
   }, [resources, filter, query]);
 
+  // Cards animate in only for the first loaded list: after a filter, search
+  // or refresh, FlashList recycles some cells and mounts others, so only part
+  // of the list would animate. Adjusted during render, so the first
+  // non-empty commit already has it.
+  const [entranceData, setEntranceData] = useState<Resource[] | null>(null);
+  if (entranceData === null && filtered.length > 0) setEntranceData(filtered);
+  const animateEntrance = filtered === entranceData;
+
   const handleOpenSearch = useCallback(() => {
     setIsSearching(true);
   }, []);
@@ -103,30 +112,38 @@ export default function ResourcesScreen() {
 
   const handleResourcePress = useCallback(
     (uuid: string) => {
-      router.push(`/application/${uuid}` as Href);
+      router.push({ pathname: "/application/[uuid]", params: { uuid } });
     },
     [router],
   );
 
   const handleViewLogs = useCallback(
     (resource: Resource) => {
-      router.push(
-        `/logs/${resource.uuid}?type=${resource.resourceType}&name=${encodeURIComponent(resource.name)}` as Href,
-      );
+      router.push({
+        pathname: "/logs/[uuid]",
+        params: {
+          uuid: resource.uuid,
+          type: resource.resourceType,
+          name: resource.name,
+        },
+      });
     },
     [router],
   );
 
   const handleOpenDeployment = useCallback(
     (deploymentUuid: string) => {
-      router.push(`/deployment/${deploymentUuid}` as Href);
+      router.push({
+        pathname: "/deployment/[uuid]",
+        params: { uuid: deploymentUuid },
+      });
     },
     [router],
   );
 
   const renderItem = useCallback(
     ({ item, index }: { item: Resource; index: number }) => (
-      <StaggeredItem index={index}>
+      <StaggeredItem index={index} animate={animateEntrance}>
         <ResourceCard
           resource={item}
           supportsResourceLogs={supportsResourceLogs}
@@ -142,6 +159,7 @@ export default function ResourcesScreen() {
       </StaggeredItem>
     ),
     [
+      animateEntrance,
       supportsResourceLogs,
       handleResourcePress,
       deploy,
@@ -294,6 +312,10 @@ export default function ResourcesScreen() {
             </Animated.View>
           )}
         </View>
+      )}
+
+      {error && resources.length > 0 && (
+        <RefreshErrorBanner message={error} onRetry={refresh} />
       )}
 
       <FlashList

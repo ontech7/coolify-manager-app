@@ -7,6 +7,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
+import { SERVER_ACTIONS_MIN_VERSION } from "@/constants";
 import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
@@ -123,7 +124,9 @@ export default function ServerDetailsModal() {
     triggerHaptic("warning");
     Alert.alert(
       "Restart Proxy",
-      "Every site on this server will be briefly unreachable while the proxy restarts.",
+      // The app can't tell 4.2.x from 4.3.0 (only legacy vs current), so say it
+      // up front instead of failing after the user confirmed.
+      `Every site on this server will be briefly unreachable while the proxy restarts.\n\nRequires Coolify ${SERVER_ACTIONS_MIN_VERSION} or newer.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -139,10 +142,14 @@ export default function ServerDetailsModal() {
     triggerHaptic("warning");
     Alert.alert(
       "Docker Cleanup",
-      "Remove unused images, build cache and stopped containers to free disk space?",
+      `Remove unused images, build cache and stopped containers to free disk space?\n\nRequires Coolify ${SERVER_ACTIONS_MIN_VERSION} or newer.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Clean Up", onPress: () => runAction("cleanup") },
+        {
+          text: "Clean Up",
+          style: "destructive",
+          onPress: () => runAction("cleanup"),
+        },
       ],
     );
   }, [runAction]);

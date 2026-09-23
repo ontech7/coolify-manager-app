@@ -2,7 +2,6 @@ import { colors, radius, spacing } from "@/theme";
 import { useEffect } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -23,7 +22,6 @@ export function SkeletonList({ count = 5, style }: SkeletonListProps) {
 
   useEffect(() => {
     opacity.set(withRepeat(withTiming(1, { duration: 700 }), -1, true));
-    return () => cancelAnimation(opacity);
   }, [opacity]);
 
   const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));

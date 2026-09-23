@@ -10,8 +10,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-/** Height of an item; the tab bar's active pill has the same height. */
-export const TAB_ITEM_HEIGHT = 46;
+/**
+ * Height of an item (Android's 48dp minimum touch target); the tab bar's
+ * active pill has the same height.
+ */
+export const TAB_ITEM_HEIGHT = 48;
 
 const ICON_SIZE = 20;
 

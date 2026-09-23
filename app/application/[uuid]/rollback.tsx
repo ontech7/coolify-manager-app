@@ -1,8 +1,10 @@
+import { ErrorState } from "@/components/error-state";
 import { ModalHeader } from "@/components/modal-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StaggeredItem } from "@/components/ui/staggered-item";
 import { Text } from "@/components/ui/text";
+import { UnsupportedVersionError } from "@/lib/coolify-api";
 import { triggerHaptic } from "@/lib/haptics";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
@@ -10,7 +12,7 @@ import type { RollbackImage } from "@/types/api";
 import { formatDockerDate } from "@/utils/date";
 import { formatImageTag } from "@/utils/string";
 import { MaterialIcons } from "@react-native-vector-icons/material-icons";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -38,9 +40,11 @@ export default function RollbackModal() {
   const [images, setImages] = useState<RollbackImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Retrying can't help on a server that predates rollback.
+  const [isUnsupported, setIsUnsupported] = useState(false);
   const [rollingBackTag, setRollingBackTag] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     // Wait for the provider; once it's ready, no API means no instance.
     if (isInitializing) return;
     if (!api || !uuid) {
@@ -51,14 +55,20 @@ export default function RollbackModal() {
     setError(null);
     setIsLoading(true);
 
-    api
-      .getRollbackImages(uuid)
-      .then((result) => setImages(result.images ?? []))
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Failed to load images"),
-      )
-      .finally(() => setIsLoading(false));
+    try {
+      const result = await api.getRollbackImages(uuid);
+      setImages(result.images ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load images");
+      setIsUnsupported(err instanceof UnsupportedVersionError);
+    } finally {
+      setIsLoading(false);
+    }
   }, [api, uuid, isInitializing]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleClose = useCallback(() => {
     router.back();
@@ -72,7 +82,10 @@ export default function RollbackModal() {
         const result = await api.rollbackApplication(uuid, tag);
         triggerHaptic("success");
         if (result.deployment_uuid) {
-          router.replace(`/deployment/${result.deployment_uuid}` as Href);
+          router.replace({
+            pathname: "/deployment/[uuid]",
+            params: { uuid: result.deployment_uuid },
+          });
         } else {
           Alert.alert("Rollback queued", result.message);
           router.back();
@@ -118,12 +131,14 @@ export default function RollbackModal() {
 
       {isLoading ? (
         <LoadingSpinner message="Loading images..." />
-      ) : error ? (
+      ) : error && isUnsupported ? (
         <EmptyState
           icon="history"
-          title="Rollback unavailable"
+          title="Rollback Unavailable"
           message={error}
         />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
       ) : images.length === 0 ? (
         <EmptyState
           icon="history"

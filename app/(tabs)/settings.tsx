@@ -1,3 +1,4 @@
+import { TabHeader } from "@/components/tab-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -15,7 +16,7 @@ import {
 import { isVersionAtLeast } from "@/utils/version";
 import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -27,7 +28,6 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import packageJson from "../../package.json";
 
 type FormMode =
@@ -36,7 +36,6 @@ type FormMode =
   | { type: "edit"; instance: CoolifyInstance };
 
 export default function SettingsScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   // The floating tab bar overlays the bottom of the screen.
   const tabBarHeight = useBottomTabBarHeight();
@@ -229,7 +228,7 @@ export default function SettingsScreen() {
   }, []);
 
   const handleOpenDisclaimer = useCallback(() => {
-    router.push("/disclaimer" as Href);
+    router.push("/disclaimer");
   }, [router]);
 
   const handleOpenLink = useCallback(async (url: string) => {
@@ -241,9 +240,17 @@ export default function SettingsScreen() {
     }
   }, []);
 
+  const header = (
+    <TabHeader
+      title="Settings"
+      subtitle="Manage your Coolify server instances"
+    />
+  );
+
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        {header}
         <LoadingSpinner message="Loading settings..." />
       </View>
     );
@@ -254,24 +261,15 @@ export default function SettingsScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {header}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          {
-            paddingTop: insets.top + spacing.xl,
-            paddingBottom: tabBarHeight + spacing.xl,
-          },
+          { paddingBottom: tabBarHeight + spacing.xl },
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>
-            Manage your Coolify server instances
-          </Text>
-        </View>
-
         {!isFormOpen && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Instances</Text>
@@ -581,20 +579,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: spacing.xl,
-  },
-  header: {
-    marginBottom: spacing["3xl"],
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.text.muted,
+    padding: spacing.xl,
   },
   section: {
     marginBottom: spacing["3xl"],
