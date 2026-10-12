@@ -454,6 +454,9 @@ export default function SettingsScreen() {
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>deploy</Text>
                   </View>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>read:sensitive</Text>
+                  </View>
                 </View>
               </View>
             </View>

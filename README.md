@@ -46,7 +46,7 @@ yarn android
 ## Configure Your Server
 
 1. Enable API Access in Coolify (Settings → Advanced → API Access).
-2. Create an API token with `read`, `write`, and `deploy` permissions.
+2. Create an API token with `read`, `write`, `deploy`, and `read:sensitive` permissions.
 3. In the app, open Settings, enter the server URL (https://coolify.example.com), paste the token, test the connection, and save.
 
 ## Tech Stack
