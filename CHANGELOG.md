@@ -1,3 +1,20 @@
+## v1.5.0
+
+### Features
+- Database and service cards open a detail screen, like applications
+- Database details: engine, image, public port and connection URLs (password masked on screen, full URL copied; needs a token with `read:sensitive`)
+- Database backups: scheduled backups with their last run (status, time, size) and a "Back up now" action (Coolify >= 4.2)
+- Service details: the service's containers with status, image and URLs, plus per-container restart, start/stop and logs (Coolify >= 4.2)
+- Logs can open directly on a given service container
+
+### Misc
+- R8 code shrinking and resource shrinking enabled for Android release builds
+- README and Settings list `read:sensitive` among the required API token permissions
+- Privacy policy calls the app a mobile app instead of a browser extension
+
+### Notes
+- Requires a new native build (EAS): R8 changes the Android build, so this release cannot be delivered as an OTA update
+
 ## v1.4.0
 
 ### Features
