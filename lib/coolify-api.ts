@@ -8,6 +8,8 @@ import type {
   ApplicationDeploymentsResponse,
   ApplicationLogsResponse,
   ApplicationResponse,
+  DatabaseBackup,
+  DatabaseDetailResponse,
   DatabaseResponse,
   DeploymentResponse,
   DeployResponse,
@@ -16,6 +18,7 @@ import type {
   RollbackImagesResponse,
   ServerResource,
   ServerResponse,
+  ServiceContainerKind,
   ServiceDetailResponse,
   ServiceResponse,
 } from "@/types/api";
@@ -304,6 +307,29 @@ export class CoolifyAPI {
     return this.request<DatabaseResponse[]>("/databases");
   }
 
+  async getDatabase(uuid: string) {
+    return this.request<DatabaseDetailResponse>(
+      `/databases/${encodeURIComponent(uuid)}`,
+    );
+  }
+
+  /** Coolify >= 4.2.0 only. */
+  async getDatabaseBackups(uuid: string) {
+    return this.requestSince<DatabaseBackup[]>(
+      POST_ACTIONS_MIN_VERSION,
+      `/databases/${encodeURIComponent(uuid)}/backups`,
+    );
+  }
+
+  /** Runs a scheduled backup right away (Coolify >= 4.2.0). */
+  async runDatabaseBackup(uuid: string, backupUuid: string) {
+    return this.requestSince<MessageResponse>(
+      POST_ACTIONS_MIN_VERSION,
+      `/databases/${encodeURIComponent(uuid)}/backups/${encodeURIComponent(backupUuid)}`,
+      { method: "PATCH", body: JSON.stringify({ backup_now: true }) },
+    );
+  }
+
   async startDatabase(uuid: string) {
     await this.request<void>(`/databases/${encodeURIComponent(uuid)}/start`, {
       method: this.actionMethod(),
@@ -374,6 +400,21 @@ export class CoolifyAPI {
     await this.request<void>(`/services/${encodeURIComponent(uuid)}/restart`, {
       method: this.actionMethod(),
     });
+  }
+
+  /** Start, stop or restart one container of a service (Coolify >= 4.2.0). */
+  async serviceContainerAction(
+    uuid: string,
+    kind: ServiceContainerKind,
+    containerUuid: string,
+    action: "start" | "stop" | "restart",
+  ) {
+    const segment = kind === "application" ? "applications" : "databases";
+    return this.requestSince<MessageResponse>(
+      POST_ACTIONS_MIN_VERSION,
+      `/services/${encodeURIComponent(uuid)}/${segment}/${encodeURIComponent(containerUuid)}/${action}`,
+      { method: "POST" },
+    );
   }
 
   async pullLatestImagesService(uuid: string) {

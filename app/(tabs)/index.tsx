@@ -111,8 +111,15 @@ export default function ResourcesScreen() {
   }, [router]);
 
   const handleResourcePress = useCallback(
-    (uuid: string) => {
-      router.push({ pathname: "/application/[uuid]", params: { uuid } });
+    (resource: Resource) => {
+      const params = { uuid: resource.uuid };
+      if (resource.resourceType === "application") {
+        router.push({ pathname: "/application/[uuid]", params });
+      } else if (resource.resourceType === "database") {
+        router.push({ pathname: "/database/[uuid]", params });
+      } else {
+        router.push({ pathname: "/service/[uuid]", params });
+      }
     },
     [router],
   );

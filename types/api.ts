@@ -120,6 +120,40 @@ export interface DatabaseResponse {
   updated_at?: string;
 }
 
+/**
+ * GET /databases/{uuid}. Engine-specific fields (credentials, config) are
+ * ignored. The connection URLs embed the password, so Coolify only returns
+ * them to tokens with `read:sensitive`.
+ */
+export interface DatabaseDetailResponse extends DatabaseResponse {
+  /** e.g. "standalone-postgresql". */
+  database_type?: string;
+  is_public?: boolean;
+  public_port?: number | null;
+  internal_db_url?: string | null;
+  external_db_url?: string | null;
+}
+
+/** One run of a scheduled backup. */
+export interface BackupExecution {
+  uuid: string;
+  /** "success" | "failed" | "running". */
+  status: string;
+  message?: string | null;
+  size?: number | null;
+  created_at: string;
+}
+
+/** Scheduled backup of a database, with its runs (latest first). */
+export interface DatabaseBackup {
+  uuid: string;
+  /** Cron expression or a keyword like "daily". */
+  frequency: string;
+  enabled: boolean;
+  save_s3?: boolean;
+  executions?: BackupExecution[];
+}
+
 // Services
 
 export interface ServiceResponse {
@@ -138,7 +172,12 @@ export interface ServiceContainer {
   name: string;
   human_name?: string | null;
   status?: string;
+  image?: string | null;
+  /** Comma-separated URLs; applications only. */
+  fqdn?: string | null;
 }
+
+export type ServiceContainerKind = "application" | "database";
 
 export interface ServiceDetailResponse extends ServiceResponse {
   applications?: ServiceContainer[];

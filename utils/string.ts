@@ -32,3 +32,20 @@ export function lastLines(text: string, count: number) {
 export function formatImageTag(tag: string) {
   return /^[0-9a-f]{40}$/i.test(tag) ? truncateCommit(tag) : tag;
 }
+
+/** Human-readable size, e.g. 1536 → "1.5 KB". */
+export function formatBytes(bytes: number) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
+}
+
+/** Hides the password of a connection URL: "postgres://u:secret@h" → "postgres://u:•••@h". */
+export function maskUrlPassword(url: string) {
+  return url.replace(/^([a-z0-9+.-]+:\/\/[^:/@]*:)[^@]*@/i, "$1•••@");
+}
