@@ -17,17 +17,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * Container logs for an application, a database or one container of a
- * service (`?type=`). Database and service logs need Coolify >= 4.2.0.
+ * service (`?type=`, `?container=` preselects a service container by UUID).
+ * Database and service logs need Coolify >= 4.2.0.
  */
 export default function LogsViewerModal() {
   const {
     uuid,
     type = "application",
     name,
+    container: initialContainerUuid,
   } = useLocalSearchParams<{
     uuid: string;
     type?: ResourceType;
     name?: string;
+    container?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -58,7 +61,11 @@ export default function LogsViewerModal() {
         ...(service.databases ?? []),
       ];
       setContainers(list);
-      setContainer(list[0] ?? null);
+      setContainer(
+        list.find((item) => item.uuid === initialContainerUuid) ??
+          list[0] ??
+          null,
+      );
       if (list.length === 0) {
         setError("This service has no containers.");
         setIsLoading(false);
@@ -67,7 +74,7 @@ export default function LogsViewerModal() {
       setError(err instanceof Error ? err.message : "Failed to load service");
       setIsLoading(false);
     }
-  }, [type, api, uuid]);
+  }, [type, api, uuid, initialContainerUuid]);
 
   useEffect(() => {
     loadContainers();

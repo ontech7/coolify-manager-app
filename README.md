@@ -10,7 +10,7 @@ A React Native (Expo SDK) app to manage your <a href="https://coolify.io/">Cooli
 
 <p align="center">
    <img src="https://img.shields.io/badge/Expo-57.0-000020?logo=expo&logoColor=white" alt="Expo">
-   <img src="https://img.shields.io/badge/v-1.4.0-blue" alt="App Version">
+   <img src="https://img.shields.io/badge/v-1.5.0-blue" alt="App Version">
    <img src="https://img.shields.io/badge/License-MIT-61dafb" alt="License">
 </p>
 
@@ -46,7 +46,7 @@ yarn android
 ## Configure Your Server
 
 1. Enable API Access in Coolify (Settings → Advanced → API Access).
-2. Create an API token with `read`, `write`, and `deploy` permissions.
+2. Create an API token with `read`, `write`, `deploy`, and `read:sensitive` permissions.
 3. In the app, open Settings, enter the server URL (https://coolify.example.com), paste the token, test the connection, and save.
 
 ## Tech Stack

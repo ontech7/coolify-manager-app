@@ -45,8 +45,8 @@ The developer may update this Privacy Policy to reflect changes in the App’s f
 ## Disclaimer
 
 **Coolify** is a third-party platform owned and operated by its respective owners.  
-**Coolify Manager** is an independent browser extension and is not affiliated with, endorsed by, or officially connected to Coolify.  
-The extension acts solely as a client-side tool to provide a faster and more convenient way to interact with and manage existing Coolify instances configured by the user.  
+**Coolify Manager** is an independent mobile app and is not affiliated with, endorsed by, or officially connected to Coolify.  
+The App acts solely as a client-side tool to provide a faster and more convenient way to interact with and manage existing Coolify instances configured by the user.  
 
 ## Contact
 

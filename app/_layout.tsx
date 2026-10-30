@@ -45,6 +45,8 @@ export default function RootLayout() {
             name="application/[uuid]/rollback"
             options={modalOptions}
           />
+          <Stack.Screen name="database/[uuid]" options={modalOptions} />
+          <Stack.Screen name="service/[uuid]" options={modalOptions} />
           <Stack.Screen name="logs/[uuid]" options={modalOptions} />
           <Stack.Screen name="deployment/[uuid]" options={modalOptions} />
           <Stack.Screen name="disclaimer" options={modalOptions} />
