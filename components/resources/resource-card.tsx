@@ -12,7 +12,7 @@ import { ResourceActions } from "./resource-actions";
 interface ResourceCardProps {
   resource: Resource;
   supportsResourceLogs: boolean;
-  onPress: (uuid: string) => void;
+  onPress: (resource: Resource) => void;
   onDeploy: (uuid: string, force?: boolean) => Promise<string | undefined>;
   onPullLatest: (uuid: string) => Promise<void>;
   onRestart: (uuid: string, type: ResourceType) => Promise<void>;
@@ -43,29 +43,28 @@ export function ResourceCard({
   const { pending } = resource;
   const status = pending ? pending.kind : getResourceStatus(resource.status);
   const chip = typeChip[resource.resourceType];
-  const isApplication = resource.resourceType === "application";
   const deploymentUuid =
     pending?.kind === "deploying" ? pending.deploymentUuid : undefined;
 
   const handlePress = useCallback(() => {
-    onPress(resource.uuid);
-  }, [onPress, resource.uuid]);
+    onPress(resource);
+  }, [onPress, resource]);
 
   const handleOpenDeployment = useCallback(() => {
     if (deploymentUuid) onOpenDeployment(deploymentUuid);
   }, [deploymentUuid, onOpenDeployment]);
 
   return (
-    <Card style={styles.card} onPress={isApplication ? handlePress : undefined}>
+    <Card style={styles.card} onPress={handlePress}>
       <View style={styles.header}>
         <View style={styles.info}>
           <Text
             style={styles.name}
             numberOfLines={1}
-            accessibilityRole={isApplication ? "button" : "text"}
-            accessibilityHint={isApplication ? "Opens details" : undefined}
-            accessibilityActions={isApplication ? ACTIVATE_ACTION : undefined}
-            onAccessibilityAction={isApplication ? handlePress : undefined}
+            accessibilityRole="button"
+            accessibilityHint="Opens details"
+            accessibilityActions={ACTIVATE_ACTION}
+            onAccessibilityAction={handlePress}
           >
             {resource.name}
           </Text>

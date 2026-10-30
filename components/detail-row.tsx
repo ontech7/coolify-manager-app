@@ -9,6 +9,8 @@ import { Pressable, StyleSheet, View } from "react-native";
 export interface DetailRowProps {
   label: string;
   value?: string | null;
+  /** Shown instead of `value` (which is still what gets copied). */
+  displayValue?: string;
   mono?: boolean;
   children?: React.ReactNode;
   /** Set by DetailTable on the last visible row to drop the bottom border. */
@@ -20,6 +22,7 @@ export interface DetailRowProps {
 export function DetailRow({
   label,
   value,
+  displayValue,
   mono,
   children,
   isLast,
@@ -57,7 +60,7 @@ export function DetailRow({
             ]}
             numberOfLines={copyable ? 1 : 2}
           >
-            {value}
+            {displayValue ?? value}
           </Text>
           {copyable && value ? (
             <Pressable
