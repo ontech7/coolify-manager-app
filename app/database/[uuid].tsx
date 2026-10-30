@@ -66,6 +66,7 @@ export default function DatabaseDetailsModal() {
           setBackups(bk.value);
           setBackupsError(null);
         } else {
+          setBackups([]);
           setBackupsError(
             bk.reason instanceof Error
               ? bk.reason.message

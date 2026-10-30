@@ -18,6 +18,7 @@ import type {
   RollbackImagesResponse,
   ServerResource,
   ServerResponse,
+  ContainerAction,
   ServiceContainerKind,
   ServiceDetailResponse,
   ServiceResponse,
@@ -313,7 +314,10 @@ export class CoolifyAPI {
     );
   }
 
-  /** Coolify >= 4.2.0 only. */
+  /**
+   * Scheduled backups with all their runs, latest first (Coolify >= 4.2.0).
+   * The endpoint can't limit the runs, so the body grows with the history.
+   */
   async getDatabaseBackups(uuid: string) {
     return this.requestSince<DatabaseBackup[]>(
       POST_ACTIONS_MIN_VERSION,
@@ -407,7 +411,7 @@ export class CoolifyAPI {
     uuid: string,
     kind: ServiceContainerKind,
     containerUuid: string,
-    action: "start" | "stop" | "restart",
+    action: ContainerAction,
   ) {
     const segment = kind === "application" ? "applications" : "databases";
     return this.requestSince<MessageResponse>(

@@ -179,6 +179,8 @@ export interface ServiceContainer {
 
 export type ServiceContainerKind = "application" | "database";
 
+export type ContainerAction = "start" | "stop" | "restart";
+
 export interface ServiceDetailResponse extends ServiceResponse {
   applications?: ServiceContainer[];
   databases?: ServiceContainer[];

@@ -2,10 +2,7 @@ import { DetailRow } from "@/components/detail-row";
 import { DetailTable } from "@/components/detail-table";
 import { ModalHeader } from "@/components/modal-header";
 import { RefreshErrorBanner } from "@/components/refresh-error-banner";
-import {
-  ServiceContainerRow,
-  type ContainerAction,
-} from "@/components/services/service-container-row";
+import { ServiceContainerRow } from "@/components/services/service-container-row";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -13,12 +10,16 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { useCoolifyApi } from "@/providers/coolify-api-provider";
 import { colors, radius, spacing } from "@/theme";
-import type { ServiceContainer, ServiceDetailResponse } from "@/types/api";
+import type {
+  ContainerAction,
+  ServiceContainer,
+  ServiceDetailResponse,
+} from "@/types/api";
 import { formatDateTime } from "@/utils/date";
 import { getResourceStatus } from "@/utils/status";
 import { MaterialIcons } from "@react-native-vector-icons/material-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -35,11 +36,15 @@ export default function ServiceDetailsModal() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest request may update the screen: a refresh after a
+  // container action can overlap a manual one.
+  const requestIdRef = useRef(0);
 
   const fetchService = useCallback(
     async (showRefreshing = false) => {
       if (!uuid || !api) return;
 
+      const requestId = ++requestIdRef.current;
       if (showRefreshing) setIsRefreshing(true);
       else setIsLoading(true);
       setError(null);
@@ -50,12 +55,16 @@ export default function ServiceDetailsModal() {
           return;
         }
 
-        setService(await api.getService(uuid));
+        const result = await api.getService(uuid);
+        if (requestId === requestIdRef.current) setService(result);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to load service");
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [uuid, api, isConfigured],

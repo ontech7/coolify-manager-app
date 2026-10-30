@@ -47,5 +47,6 @@ export function formatBytes(bytes: number) {
 
 /** Hides the password of a connection URL: "postgres://u:secret@h" → "postgres://u:•••@h". */
 export function maskUrlPassword(url: string) {
-  return url.replace(/^([a-z0-9+.-]+:\/\/[^:/@]*:)[^@]*@/i, "$1•••@");
+  // Greedy up to the last "@": an unencoded password may contain one.
+  return url.replace(/^([a-z0-9+.-]+:\/\/[^:/@]*:).*@/i, "$1•••@");
 }

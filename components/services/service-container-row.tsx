@@ -3,12 +3,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Text } from "@/components/ui/text";
 import { triggerHaptic } from "@/lib/haptics";
 import { colors, spacing } from "@/theme";
-import type { ServiceContainer } from "@/types/api";
+import type { ContainerAction, ServiceContainer } from "@/types/api";
 import { getResourceStatus, isResourceRunning } from "@/utils/status";
 import { useCallback, useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, View } from "react-native";
-
-export type ContainerAction = "start" | "stop" | "restart";
 
 interface ServiceContainerRowProps {
   container: ServiceContainer;
@@ -33,8 +31,16 @@ export function ServiceContainerRow({
   const [loadingAction, setLoadingAction] = useState<ContainerAction | null>(
     null,
   );
+  // Coolify only queues start/stop: keep showing "Starting"/"Stopping" until
+  // the reported status moves on, so the button isn't pressed twice.
+  const [pending, setPending] = useState<{
+    kind: "starting" | "stopping";
+    fromStatus?: string;
+  } | null>(null);
   const name = container.human_name || container.name;
   const isRunning = isResourceRunning(container.status);
+  const pendingKind =
+    pending && pending.fromStatus === container.status ? pending.kind : null;
   const urls = (container.fqdn ?? "")
     .split(",")
     .map((url) => url.trim())
@@ -44,9 +50,16 @@ export function ServiceContainerRow({
     async (action: ContainerAction) => {
       setLoadingAction(action);
       try {
+        if (action !== "restart") {
+          setPending({
+            kind: action === "start" ? "starting" : "stopping",
+            fromStatus: container.status,
+          });
+        }
         await onAction(container, action);
         triggerHaptic("success");
       } catch (error) {
+        setPending(null);
         triggerHaptic("error");
         Alert.alert(
           "Error",
@@ -104,7 +117,9 @@ export function ServiceContainerRow({
             </Text>
           ) : null}
         </View>
-        <StatusBadge status={getResourceStatus(container.status)} />
+        <StatusBadge
+          status={pendingKind ?? getResourceStatus(container.status)}
+        />
       </View>
 
       {urls.map((url) => (
@@ -125,7 +140,7 @@ export function ServiceContainerRow({
               variant="restart"
               onPress={handleRestart}
               loading={loadingAction === "restart"}
-              disabled={loadingAction !== null || !isRunning}
+              disabled={loadingAction !== null || !isRunning || !!pendingKind}
             />
             <IconButton
               name={isRunning ? "stop" : "play-arrow"}
@@ -134,7 +149,7 @@ export function ServiceContainerRow({
               variant={isRunning ? "stop" : "start"}
               onPress={handleStartStop}
               loading={loadingAction === "start" || loadingAction === "stop"}
-              disabled={loadingAction !== null}
+              disabled={loadingAction !== null || !!pendingKind}
             />
           </View>
           <IconButton
