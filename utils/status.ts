@@ -35,7 +35,9 @@ export function getResourceStatus(rawStatus?: string): ApplicationStatus {
     return "stopped";
   }
 
-  if (status.includes("running") && status.includes("unhealthy")) {
+  // Coolify's aggregate for containers that are partly up, or dead. Before
+  // "healthy", which "unhealthy" contains.
+  if (status.includes("degraded") || status.includes("unhealthy")) {
     return "running:unhealthy";
   }
 
@@ -55,7 +57,8 @@ export function getResourceStatus(rawStatus?: string): ApplicationStatus {
 }
 
 export function isResourceRunning(rawStatus?: string) {
-  return (rawStatus?.toLowerCase() ?? "").includes("running");
+  const status = rawStatus?.toLowerCase() ?? "";
+  return status.includes("running") || status.includes("degraded");
 }
 
 /**
