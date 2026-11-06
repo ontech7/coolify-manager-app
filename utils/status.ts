@@ -56,9 +56,23 @@ export function getResourceStatus(rawStatus?: string): ApplicationStatus {
   return "unknown";
 }
 
+/**
+ * Whether it can be stopped or restarted, rather than started. "starting" also
+ * matches "restarting", what Coolify reports for a container in a crash loop.
+ */
 export function isResourceRunning(rawStatus?: string) {
   const status = rawStatus?.toLowerCase() ?? "";
-  return status.includes("running") || status.includes("degraded");
+  return ["running", "degraded", "starting"].some((word) =>
+    status.includes(word),
+  );
+}
+
+/**
+ * Whether a start has finished. Narrower than isResourceRunning: "degraded" and
+ * "starting" are also what a service with several containers reports on its way up.
+ */
+export function isResourceUp(rawStatus?: string) {
+  return (rawStatus?.toLowerCase() ?? "").includes("running");
 }
 
 /**

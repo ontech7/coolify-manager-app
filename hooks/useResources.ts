@@ -9,7 +9,7 @@ import type {
   ResourceType,
   ServiceResponse,
 } from "@/types/api";
-import { isResourceRunning } from "@/utils/status";
+import { isResourceRunning, isResourceUp } from "@/utils/status";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type PendingMap = Record<string, ResourcePending>;
@@ -71,7 +71,9 @@ function prunePending(
       done =
         now - entry.since > PENDING_ACTION_TIMEOUT ||
         (resource !== undefined &&
-          isResourceRunning(resource.status) === (entry.kind === "starting"));
+          (entry.kind === "starting"
+            ? isResourceUp(resource.status)
+            : !isResourceRunning(resource.status)));
     }
 
     if (done) changed = true;
