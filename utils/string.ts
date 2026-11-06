@@ -45,8 +45,23 @@ export function formatBytes(bytes: number) {
   return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
-/** Hides the password of a connection URL: "postgres://u:secret@h" → "postgres://u:•••@h". */
+/**
+ * Hides the password of a connection URL: "postgres://u:secret@h" → "postgres://u:•••@h".
+ * On Redis it hides all the credentials: Coolify also builds "redis://secret@h",
+ * for Redis older than 6, where the only part is the password, and a password
+ * with a ":" in it reads just like "user:password".
+ */
 export function maskUrlPassword(url: string) {
-  // Greedy up to the last "@": an unencoded password may contain one.
-  return url.replace(/^([a-z0-9+.-]+:\/\/[^:/@]*:).*@/i, "$1•••@");
+  // The last "@": an unencoded password may contain one.
+  const at = url.lastIndexOf("@");
+  if (at === -1) {
+    return url;
+  }
+
+  const scheme = url.match(/^[^/:@]+:\/\//)?.[0] ?? "";
+  const credentials = url.slice(scheme.length, at);
+  const username = /^rediss?:/i.test(scheme)
+    ? ""
+    : credentials.slice(0, credentials.indexOf(":") + 1);
+  return `${scheme}${username}•••${url.slice(at)}`;
 }
